@@ -91,6 +91,13 @@ export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, 
               <span className="text-lg">⚡</span>
               <span className="text-sm">My GPTs</span>
             </a>
+            <a 
+              href="/search"
+              className="flex items-center gap-3 px-3 py-2 text-gpt-gray-300 hover:bg-gpt-gray-800 hover:text-white rounded-lg transition-colors"
+            >
+              <span className="text-lg">🔍</span>
+              <span className="text-sm">Document Search</span>
+            </a>
             <div className="text-xs text-gpt-gray-500 px-3">
               GPT-OSS Frontend
             </div>

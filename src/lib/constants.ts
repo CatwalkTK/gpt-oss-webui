@@ -3,7 +3,7 @@ export const API_CONFIG = {
   ENDPOINTS: {
     CHAT_COMPLETIONS: '/v1/chat/completions'
   },
-  DEFAULT_MODEL: 'gpt-oss:20b',
+  DEFAULT_MODEL: 'deepseek-r1:7b',
   DEFAULT_TEMPERATURE: 0.7
 } as const
 

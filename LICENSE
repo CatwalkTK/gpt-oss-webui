@@ -1,0 +1,98 @@
+GPT-OSS WebUI with Vector Search RAG
+Copyright (C) 2025 CatwalkTK
+
+DUAL LICENSE AGREEMENT
+
+This software is provided under a dual license model:
+
+═══════════════════════════════════════════════════════════════════════════════
+
+1. OPEN SOURCE LICENSE: AGPL-3.0
+═══════════════════════════════════════════════════════════════════════════════
+
+For non-commercial use, this software is licensed under the GNU Affero General 
+Public License version 3 (AGPL-3.0).
+
+This program is free software: you can redistribute it and/or modify it under 
+the terms of the GNU Affero General Public License as published by the Free 
+Software Foundation, either version 3 of the License, or (at your option) any 
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more 
+details.
+
+You should have received a copy of the GNU Affero General Public License along 
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+IMPORTANT AGPL-3.0 REQUIREMENTS:
+- Any network service using this code must provide source code to users
+- All modifications must be released under AGPL-3.0
+- Patent grants apply to prevent patent litigation
+- Strong copyleft ensures derivative works remain open source
+
+═══════════════════════════════════════════════════════════════════════════════
+
+2. COMMERCIAL LICENSE
+═══════════════════════════════════════════════════════════════════════════════
+
+For commercial use, including but not limited to:
+- Integration into proprietary software
+- Commercial services or SaaS offerings  
+- Closed-source distributions
+- Enterprise deployments
+- Revenue-generating applications
+
+A separate commercial license is required.
+
+COMMERCIAL LICENSE BENEFITS:
+✓ No obligation to open source your modifications
+✓ Freedom to integrate into proprietary products
+✓ Commercial redistribution rights
+✓ Premium technical support
+✓ Liability protection and warranties
+✓ Patent indemnification
+
+For commercial licensing inquiries, contact:
+Email: tsuda@ryowa-inc.co.jp
+GitHub: https://github.com/CatwalkTK/gpt-oss-webui
+
+═══════════════════════════════════════════════════════════════════════════════
+
+3. CREATIVE COMMONS LICENSE (Documentation & Assets)
+═══════════════════════════════════════════════════════════════════════════════
+
+Documentation, images, and non-code assets are licensed under:
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+
+This means:
+✓ Share and adapt for non-commercial purposes
+✓ Must provide attribution
+✓ Derivatives must use same license
+✗ Commercial use prohibited without permission
+
+See: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ADDITIONAL TERMS & CONDITIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+TRADEMARK: "GPT-OSS WebUI" and related marks are trademarks of CatwalkTK.
+Commercial use of these marks requires explicit permission.
+
+PATENTS: This software may be covered by patents. Commercial licensees receive 
+patent rights; AGPL users receive patent grants as defined in AGPL-3.0.
+
+ENFORCEMENT: Violation of license terms will result in automatic termination 
+of rights and potential legal action.
+
+GOVERNING LAW: This agreement is governed by the laws of [Your Jurisdiction].
+
+═══════════════════════════════════════════════════════════════════════════════
+
+For questions about licensing, contact: tsuda@ryowa-inc.co.jp
+Latest license version: https://github.com/CatwalkTK/gpt-oss-webui/blob/main/LICENSE
+
+Last updated: January 2025

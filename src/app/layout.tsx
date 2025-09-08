@@ -1,8 +1,9 @@
 import './globals.css'
+import LicenseNotice from '@/components/LicenseNotice'
 
 export const metadata = {
-  title: 'GPT-OSS Chat',
-  description: 'ChatGPT-like interface for GPT-OSS models',
+  title: 'GPT-OSS WebUI with Vector Search RAG',
+  description: 'A modern ChatGPT clone with advanced Vector Search RAG capabilities for local document indexing',
 }
 
 export default function RootLayout({
@@ -12,7 +13,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <LicenseNotice />
+      </body>
     </html>
   )
 }

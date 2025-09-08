@@ -11,8 +11,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "CatwalkTK <tsuda@ryowa-inc.co.jp>",
+  "license": "AGPL-3.0",
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@types/node": "^24.3.0",

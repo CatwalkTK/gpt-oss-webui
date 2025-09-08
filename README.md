@@ -213,7 +213,47 @@ Contributions are welcome! Please follow these guidelines:
 
 ## 📄 License
 
-Apache 2.0 - See LICENSE file for details
+This project uses a **Triple License** system for maximum protection:
+
+### 🔓 **Open Source License: AGPL-3.0**
+- ✅ **Personal, Educational & Research**: Free to use, modify, and distribute
+- ✅ **Network Services**: Must provide source code to all users
+- ✅ **Modifications**: Must be released under AGPL-3.0
+- ❌ **Commercial Closed-Source**: Not permitted under this license
+
+### 💼 **Commercial License: Available**
+- ✅ **Proprietary Integration**: No source code disclosure required
+- ✅ **Commercial Services**: SaaS, enterprise deployments allowed
+- ✅ **Closed-Source Distribution**: Full commercial rights
+- ✅ **Premium Support**: Technical support and warranties included
+
+### 📚 **Documentation License: CC BY-NC-SA 4.0**
+- ✅ **Share & Adapt**: For non-commercial purposes
+- ✅ **Attribution Required**: Must credit the original author
+- ❌ **Commercial Use**: Requires separate permission
+
+---
+
+### 🤝 **Choose Your License**
+
+| Use Case | License Required | Contact |
+|----------|------------------|---------|
+| **Personal/Educational** | AGPL-3.0 (Free) | Use freely |
+| **Open Source Project** | AGPL-3.0 (Free) | Must share improvements |
+| **Commercial Product** | Commercial License | [Get Commercial License](mailto:tsuda@ryowa-inc.co.jp) |
+| **Enterprise/SaaS** | Commercial License | [Enterprise Inquiry](mailto:tsuda@ryowa-inc.co.jp) |
+
+### 💡 **Why This License Structure?**
+
+This **Triple License** approach ensures:
+- 🌟 **Innovation Protection**: Your advanced RAG technology remains protected
+- 💰 **Revenue Opportunity**: Commercial users pay for the value they receive
+- 🤝 **Community Growth**: Open source community can still benefit and contribute
+- ⚖️ **Legal Clarity**: Clear terms prevent licensing confusion
+
+**Questions about licensing?** Contact: [tsuda@ryowa-inc.co.jp](mailto:tsuda@ryowa-inc.co.jp)
+
+See [LICENSE](./LICENSE) file for full terms and conditions.
 
 ## 🙏 Acknowledgments
 

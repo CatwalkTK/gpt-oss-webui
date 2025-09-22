@@ -15,6 +15,7 @@ export function useChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { settings } = useSettings()
   const languageMode = settings.language
+  const useIndexedContext = settings.useIndexedContext
 
   const currentChat = chats.find(chat => chat.id === currentChatId)
 
@@ -100,13 +101,15 @@ export function useChat() {
 
     try {
       let searchResults: SearchResult[] = []
-      try {
-        searchResults = await documentIndexer.searchDocuments(content, 5)
-      } catch (searchError) {
-        console.warn('Vector search failed, falling back to direct chat:', searchError)
+      if (useIndexedContext) {
+        try {
+          searchResults = await documentIndexer.searchDocuments(content, 5)
+        } catch (searchError) {
+          console.warn('Vector search failed, falling back to direct chat:', searchError)
+        }
       }
 
-      const useRAG = searchResults.length > 0
+      const useRAG = useIndexedContext && searchResults.length > 0
 
       const stream = selectedGPT 
         ? useRAG

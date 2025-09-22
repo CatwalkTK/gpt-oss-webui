@@ -77,6 +77,10 @@ export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, 
     updateSettings({ textSize: event.target.value as TextSize })
   }
 
+  const handleIndexedContextChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    updateSettings({ useIndexedContext: event.target.checked })
+  }
+
   const getLanguageLabel = (code: LanguageCode, fallback: string) => {
     if (code === 'auto') {
       const localized = languageAutoMap[settings.language as LanguageCode]
@@ -251,6 +255,19 @@ export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, 
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="flex items-center justify-between bg-gpt-gray-800 border border-gpt-gray-700 rounded-lg px-3 py-2">
+                    <span>{t('useIndexedContextLabel')}</span>
+                    <input
+                      type="checkbox"
+                      checked={settings.useIndexedContext}
+                      onChange={handleIndexedContextChange}
+                      className="w-4 h-4"
+                    />
+                  </label>
+                  <p className="text-[11px] text-gpt-gray-500">{t('useIndexedContextHint')}</p>
                 </div>
               </div>
             )}

@@ -14,6 +14,7 @@ export function useChatWithRAG() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { settings } = useSettings()
   const languageMode = settings.language
+  const useIndexedContext = settings.useIndexedContext
 
   const currentChat = chats.find(chat => chat.id === currentChatId)
 
@@ -108,16 +109,18 @@ export function useChatWithRAG() {
     setIsLoading(true)
 
     try {
+      const effectiveResults = useIndexedContext ? searchResults : []
+
       const stream = selectedGPT 
         ? await sendMessageWithGPTAndRAG(
             content, 
             selectedGPT, 
             currentChat?.messages || [], 
-            searchResults,
+            effectiveResults,
             attachments ?? [],
             languageMode
           )
-        : await sendMessageWithRAG(content, searchResults, attachments ?? [], languageMode)
+        : await sendMessageWithRAG(content, effectiveResults, attachments ?? [], languageMode)
       
       const sseStream = parseSSEStream(stream)
       const reader = sseStream.getReader()

@@ -102,11 +102,13 @@ export interface UserSettings {
   theme: ThemeMode
   sidebarPosition: SidebarPosition
   textSize: TextSize
+  useIndexedContext: boolean
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   language: 'auto',
   theme: 'dark',
   sidebarPosition: 'left',
-  textSize: 'normal'
+  textSize: 'normal',
+  useIndexedContext: true
 }

@@ -10,6 +10,8 @@ type UIKey =
   | 'preferences'
   | 'languageLabel'
   | 'languageHelperShort'
+  | 'useIndexedContextLabel'
+  | 'useIndexedContextHint'
   | 'activeMyGPT'
   | 'toggleSearchShow'
   | 'toggleSearchHide'
@@ -23,6 +25,9 @@ type UIKey =
 
 const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
   auto: {
+    useIndexedContextLabel: 'Use indexed context',
+    useIndexedContextHint: 'Toggle retrieval-augmented answers from your local documents.',
+
     appName: 'Clavi Local Mining',
     tagline: 'Default assistant',
     newChat: 'New Chat',
@@ -65,6 +70,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining can make mistakes. Check important info.'
   },
   ja: {
+    useIndexedContextLabel: 'インデックス文書を利用',
+    useIndexedContextHint: 'ローカルでインデックスしたドキュメントを回答に活用するか切り替えます。',
+
     appName: 'Clavi Local Mining',
     tagline: '標準アシスタント',
     newChat: '新しいチャット',
@@ -86,6 +94,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining の回答には誤りが含まれる場合があります。重要な情報は必ず確認してください。'
   },
   fr: {
+    useIndexedContextLabel: 'Utiliser le contexte indexé',
+    useIndexedContextHint: 'Activez ou désactivez les réponses enrichies par vos documents locaux.',
+
     appName: 'Clavi Local Mining',
     tagline: 'Assistant par défaut',
     newChat: 'Nouvelle discussion',
@@ -107,6 +118,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining peut contenir des erreurs. Vérifiez les informations importantes.'
   },
   it: {
+    useIndexedContextLabel: 'Usa il contesto indicizzato',
+    useIndexedContextHint: 'Attiva o disattiva le risposte basate sui documenti indicizzati localmente.',
+
     appName: 'Clavi Local Mining',
     tagline: 'Assistente predefinito',
     newChat: 'Nuova chat',
@@ -128,6 +142,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining può commettere errori. Controlla sempre le informazioni importanti.'
   },
   pt: {
+    useIndexedContextLabel: 'Usar contexto indexado',
+    useIndexedContextHint: 'Ative ou desative respostas baseadas em documentos indexados localmente.',
+
     appName: 'Clavi Local Mining',
     tagline: 'Assistente padrão',
     newChat: 'Nova conversa',
@@ -149,6 +166,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining pode conter erros. Verifique informações importantes.'
   },
   de: {
+    useIndexedContextLabel: 'Index-Kontext verwenden',
+    useIndexedContextHint: 'Schalten Sie Antworten mit lokal indizierten Dokumenten ein oder aus.',
+
     appName: 'Clavi Local Mining',
     tagline: 'Standard-Assistent',
     newChat: 'Neuer Chat',
@@ -170,6 +190,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining kann Fehler enthalten. Prüfen Sie wichtige Informationen.'
   },
   zh: {
+    useIndexedContextLabel: '使用索引内容',
+    useIndexedContextHint: '控制是否在回复中使用本地索引的文档。',
+
     appName: 'Clavi Local Mining',
     tagline: '默认助手',
     newChat: '新建对话',
@@ -191,6 +214,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining 可能会出错，请核实重要信息。'
   },
   ko: {
+    useIndexedContextLabel: '인덱스 컨텍스트 사용',
+    useIndexedContextHint: '로컬로 인덱싱한 문서를 응답에 활용할지 설정합니다.',
+
     appName: 'Clavi Local Mining',
     tagline: '기본 어시스턴트',
     newChat: '새 채팅',
@@ -212,6 +238,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining의 답변에는 오류가 있을 수 있습니다. 중요한 정보는 반드시 확인하세요.'
   },
   th: {
+    useIndexedContextLabel: 'ใช้บริบทจากดัชนี',
+    useIndexedContextHint: 'เปิด / ปิด การใช้เอกสารที่สร้างดัชนีเพื่อเสริมคำตอบของคุณ',
+
     appName: 'Clavi Local Mining',
     tagline: 'ผู้ช่วยเริ่มต้น',
     newChat: 'สนทนาใหม่',
@@ -233,6 +262,9 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     disclaimer: 'Clavi Local Mining อาจให้ข้อมูลผิดพลาด ตรวจสอบข้อมูลสำคัญเสมอ'
   },
   vi: {
+    useIndexedContextLabel: 'Sử dụng ngữ cảnh đã lập chỉ mục',
+    useIndexedContextHint: 'Bật / tắt việc dùng tài liệu đã lập chỉ mục cục bộ để bổ sung câu trả lời.',
+
     appName: 'Clavi Local Mining',
     tagline: 'Trợ lý mặc định',
     newChat: 'Cuộc trò chuyện mới',

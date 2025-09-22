@@ -10,7 +10,7 @@ Clavi Local Mining is a modern ChatGPT-style interface built with Next.js 15 and
 - **Custom GPTs**: Create and manage personalized AI assistants
 - **Conversation Starters**: Pre-defined prompts for quick chat initiation
 - **Multimodal Support**: Handle images, PDFs, and Office documents
-- **Inline Document Search**: Toggle a vector-search panel inside the chat and feed results straight into responses
+- **Inline Document Search**: Toggle a vector-search panel inside the chat, feed results straight into responses, or disable indexed context entirely for pure chat
 - **Customisable Language Mode**: Choose the assistant's reply language from the Settings panel
 - **Flexible Preferences**: Adjust theme, sidebar position, and interface size directly from the sidebar
 
@@ -121,7 +121,7 @@ User Query → Embedding → Similarity Search → Context Injection → AI Resp
 
 ### Settings
 1. Expand **Preferences** in the sidebar footer
-2. Choose your reply **language**, toggle the **theme** (dark/light), switch the sidebar **position**, or adjust the interface **size**
+2. Choose your reply **language**, toggle the **theme** (dark/light), switch the sidebar **position**, adjust the interface **size**, or disable **indexed context** when you want pure conversations
 3. Use the `/settings` page when you need to review storage usage or clear saved chats
 
 ### Custom GPTs

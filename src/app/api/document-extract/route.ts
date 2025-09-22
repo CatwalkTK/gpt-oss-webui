@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import JSZip from 'jszip'
 
+export const runtime = 'nodejs'
+
 const TEXT_LIMIT = 20_000
 
 export async function POST(request: NextRequest) {

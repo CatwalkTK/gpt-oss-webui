@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // so we import the library module directly.
 import pdf from 'pdf-parse/lib/pdf-parse.js'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const { base64Data, fileName } = await request.json()

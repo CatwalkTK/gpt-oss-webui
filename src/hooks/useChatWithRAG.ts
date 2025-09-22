@@ -5,12 +5,15 @@ import { sendMessageWithRAG, sendMessageWithGPTAndRAG } from '@/lib/ragApi'
 import { parseSSEStream } from '@/lib/api'
 import { saveChats, loadChats } from '@/lib/storage'
 import { SearchResult } from './useVectorSearch'
+import { useSettings } from '@/context/SettingsContext'
 
 export function useChatWithRAG() {
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { settings } = useSettings()
+  const languageMode = settings.language
 
   const currentChat = chats.find(chat => chat.id === currentChatId)
 
@@ -111,9 +114,10 @@ export function useChatWithRAG() {
             selectedGPT, 
             currentChat?.messages || [], 
             searchResults,
-            attachments
+            attachments ?? [],
+            languageMode
           )
-        : await sendMessageWithRAG(content, searchResults, attachments)
+        : await sendMessageWithRAG(content, searchResults, attachments ?? [], languageMode)
       
       const sseStream = parseSSEStream(stream)
       const reader = sseStream.getReader()

@@ -1,9 +1,10 @@
 import './globals.css'
 import LicenseNotice from '@/components/LicenseNotice'
+import { SettingsProvider } from '@/context/SettingsContext'
 
 export const metadata = {
-  title: 'GPT-OSS WebUI with Vector Search RAG',
-  description: 'A modern ChatGPT clone with advanced Vector Search RAG capabilities for local document indexing',
+  title: 'Clavi Local Mining with Vector Search RAG',
+  description: 'Clavi Local Mining pairs ChatGPT-style conversations with advanced Vector Search RAG for local document indexing',
 }
 
 export default function RootLayout({
@@ -14,8 +15,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
-        <LicenseNotice />
+        <SettingsProvider>
+          {children}
+          <LicenseNotice />
+        </SettingsProvider>
       </body>
     </html>
   )

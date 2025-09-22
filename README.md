@@ -1,6 +1,6 @@
-# GPT-OSS WebUI with Vector Search RAG
+# Clavi Local Mining with Vector Search RAG
 
-A modern ChatGPT clone built with Next.js 15 and React 19, featuring advanced **Vector Search RAG (Retrieval-Augmented Generation)** capabilities for local document indexing and intelligent search.
+Clavi Local Mining is a modern ChatGPT-style interface built with Next.js 15 and React 19, featuring advanced **Vector Search RAG (Retrieval-Augmented Generation)** capabilities for local document indexing and intelligent search.
 
 ## 🚀 Features
 
@@ -10,6 +10,9 @@ A modern ChatGPT clone built with Next.js 15 and React 19, featuring advanced **
 - **Custom GPTs**: Create and manage personalized AI assistants
 - **Conversation Starters**: Pre-defined prompts for quick chat initiation
 - **Multimodal Support**: Handle images, PDFs, and Office documents
+- **Inline Document Search**: Toggle a vector-search panel inside the chat and feed results straight into responses
+- **Customisable Language Mode**: Choose the assistant's reply language from the Settings panel
+- **Flexible Preferences**: Adjust theme, sidebar position, and interface size directly from the sidebar
 
 ### 🔍 Advanced Vector Search & RAG
 - **Local Document Indexing**: Index your files locally using vector embeddings
@@ -98,7 +101,9 @@ User Query → Embedding → Similarity Search → Context Injection → AI Resp
 4. Enjoy streaming AI responses
 
 ### Document Search & RAG
-1. **Go to the Search page**: http://localhost:3000/search
+1. **Open the Document Search tools**:
+   - From the main chat, use the **Show Document Search** toggle in the header, or
+   - Visit the dedicated page at http://localhost:3000/search
 
 2. **Index your documents**:
    - **Option A**: Click "Index Folder" (Chrome/Edge only)
@@ -110,9 +115,14 @@ User Query → Embedding → Similarity Search → Context Injection → AI Resp
    - View similarity scores and document previews
 
 4. **Chat with context**:
-   - Start a new chat from the search page
-   - Ask questions - AI will automatically use relevant documents as context
-   - References to source documents included in responses
+   - Once documents are indexed, every chat message automatically runs a semantic lookup
+   - Relevant passages are injected into the prompt, even when you stay on the main chat view
+   - Responses include pointers to the matched documents whenever possible
+
+### Settings
+1. Expand **Preferences** in the sidebar footer
+2. Choose your reply **language**, toggle the **theme** (dark/light), switch the sidebar **position**, or adjust the interface **size**
+3. Use the `/settings` page when you need to review storage usage or clear saved chats
 
 ### Custom GPTs
 1. Navigate to "My GPTs"

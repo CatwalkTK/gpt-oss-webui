@@ -3,12 +3,33 @@ import { API_CONFIG, REGEX_PATTERNS } from './constants'
 import { browserTool } from './browserTool'
 import { pythonTool } from './pythonTool'
 import { extractOfficeDocumentFromBase64 } from './officeExtractor'
+import type { LanguageCode } from '@/types/settings'
+import { LANGUAGE_METADATA } from '@/types/settings'
 
 export type MessageContentPart =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } }
 
 const MAX_ATTACHMENT_TEXT_LENGTH = 8_000
+
+export function resolveLanguagePreference(languageMode: LanguageCode, message: string): LanguageCode {
+  if (languageMode !== 'auto') {
+    return languageMode
+  }
+
+  return REGEX_PATTERNS.JAPANESE.test(message) ? 'ja' : 'auto'
+}
+
+function getUserDirective(language: LanguageCode): string {
+  if (language === 'auto') return ''
+  return LANGUAGE_METADATA[language]?.userInstruction ?? ''
+}
+
+function appendDirective(base: string, language: LanguageCode): string {
+  const directive = getUserDirective(language)
+  if (!directive) return base
+  return base.includes(directive) ? base : `${base}\n${directive}`
+}
 
 async function extractPdfContent(att: import('@/types/chat').FileAttachment): Promise<string> {
   try {
@@ -43,19 +64,35 @@ function ensureBase64(att: import('@/types/chat').FileAttachment): string | null
   return null
 }
 
-function buildMessageIntro(message: string, attachments: import('@/types/chat').FileAttachment[] = []): string {
+function buildMessageIntro(
+  message: string,
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  targetLanguage: LanguageCode
+): string {
   if (attachments.length === 0) {
+    if (targetLanguage !== 'auto') {
+      const directive = getUserDirective(targetLanguage)
+      return directive ? `${directive}\n\n${message}` : message
+    }
     return message
   }
 
-  const hasJapanese = REGEX_PATTERNS.JAPANESE.test(message)
   const attachmentSummary = attachments
     .map(att => `- ${att.name} (${att.type || 'unknown'}, ${att.size} bytes)`)
     .join('\n')
 
-  return hasJapanese
-    ? `以下の添付ファイルを参考にして日本語で回答してください。添付ファイル一覧:\n${attachmentSummary}\n\nユーザーの質問: ${message}`
-    : `Please reference the attached files when answering. Attachments:\n${attachmentSummary}\n\nUser message: ${message}`
+  if (targetLanguage === 'ja') {
+    return `以下の添付ファイルを参考にして日本語で回答してください。添付ファイル一覧:\n${attachmentSummary}\n\nユーザーの質問: ${message}`
+  }
+
+  const baseIntro = `Please reference the attached files when answering. Attachments:\n${attachmentSummary}\n\nUser message: ${message}`
+
+  if (targetLanguage !== 'auto') {
+    const directive = getUserDirective(targetLanguage)
+    return directive ? `${directive}\n\n${baseIntro}` : baseIntro
+  }
+
+  return baseIntro
 }
 
 function decodeTextBase64(data: string | undefined): string {
@@ -73,9 +110,12 @@ function decodeTextBase64(data: string | undefined): string {
 }
 
 async function buildAttachmentParts(
-  attachments: import('@/types/chat').FileAttachment[] = []
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  targetLanguage: LanguageCode
 ): Promise<MessageContentPart[]> {
   const parts: MessageContentPart[] = []
+
+  const isJapanese = targetLanguage === 'ja'
 
   for (const attachment of attachments) {
     if (attachment.type.startsWith('image/')) {
@@ -92,13 +132,16 @@ async function buildAttachmentParts(
         type: 'image_url',
         image_url: { url: dataUrl }
       })
-      parts.push({ type: 'text', text: `【画像: ${attachment.name}】上記の画像を詳細に分析してください。` })
+      const text = isJapanese
+        ? `【画像: ${attachment.name}】上記の画像を詳細に分析してください。`
+        : `【Image: ${attachment.name}】Please analyse the image in detail.`
+      parts.push({ type: 'text', text: appendDirective(text, targetLanguage) })
       continue
     }
 
     if (attachment.type === 'application/pdf' || REGEX_PATTERNS.PDF_FILES.test(attachment.name)) {
       const text = await extractPdfContent(attachment)
-      parts.push({ type: 'text', text: text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH) })
+      parts.push({ type: 'text', text: appendDirective(text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH), targetLanguage) })
       continue
     }
 
@@ -106,38 +149,60 @@ async function buildAttachmentParts(
       const base64 = ensureBase64(attachment)
       const extraction = await extractOfficeDocumentFromBase64(base64, attachment.name, attachment.type)
 
-      const intro = `【Office文書: ${attachment.name}】\nファイル種別: ${attachment.type || 'application/octet-stream'}\nサイズ: ${attachment.size} bytes`
+      const intro = isJapanese
+        ? `【Office文書: ${attachment.name}】\nファイル種別: ${attachment.type || 'application/octet-stream'}\nサイズ: ${attachment.size} bytes`
+        : `【Office Document: ${attachment.name}】\nType: ${attachment.type || 'application/octet-stream'}\nSize: ${attachment.size} bytes`
 
       const metadataSummary: string[] = []
       if (extraction?.metadata?.sheetNames?.length) {
-        metadataSummary.push(`シート: ${extraction.metadata.sheetNames.join(', ')}`)
+        metadataSummary.push(
+          isJapanese
+            ? `シート: ${extraction.metadata.sheetNames.join(', ')}`
+            : `Sheets: ${extraction.metadata.sheetNames.join(', ')}`
+        )
       }
       if (typeof extraction?.metadata?.rowCount === 'number' && extraction.metadata.rowCount > 0) {
-        metadataSummary.push(`行数: ${extraction.metadata.rowCount}`)
+        metadataSummary.push(
+          isJapanese
+            ? `行数: ${extraction.metadata.rowCount}`
+            : `Rows: ${extraction.metadata.rowCount}`
+        )
       }
       if (typeof extraction?.metadata?.paragraphCount === 'number' && extraction.metadata.paragraphCount > 0) {
-        metadataSummary.push(`段落数: ${extraction.metadata.paragraphCount}`)
+        metadataSummary.push(
+          isJapanese
+            ? `段落数: ${extraction.metadata.paragraphCount}`
+            : `Paragraphs: ${extraction.metadata.paragraphCount}`
+        )
       }
       if (typeof extraction?.metadata?.slideCount === 'number' && extraction.metadata.slideCount > 0) {
-        metadataSummary.push(`スライド数: ${extraction.metadata.slideCount}`)
+        metadataSummary.push(
+          isJapanese
+            ? `スライド数: ${extraction.metadata.slideCount}`
+            : `Slides: ${extraction.metadata.slideCount}`
+        )
       }
       if (extraction?.metadata?.summary) {
         metadataSummary.push(extraction.metadata.summary)
       }
 
-      const detailLine = metadataSummary.length > 0 ? `\n概要: ${metadataSummary.join(' / ')}` : ''
+      const detailLine = metadataSummary.length > 0 ? `\n${metadataSummary.join(' / ')}` : ''
 
       if (extraction?.text) {
         const trimmed = extraction.text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH)
-        const suffix = extraction.text.length > MAX_ATTACHMENT_TEXT_LENGTH ? '\n...（省略）' : ''
+        const suffix = extraction.text.length > MAX_ATTACHMENT_TEXT_LENGTH ? (isJapanese ? '\n...（省略）' : '\n... (truncated)') : ''
+        const combined = `${intro}${detailLine}\n---\n${trimmed}${suffix}`
         parts.push({
           type: 'text',
-          text: `${intro}${detailLine}\n---\n${trimmed}${suffix}`
+          text: appendDirective(combined, targetLanguage)
         })
       } else {
+        const fallbackMessage = isJapanese
+          ? `${intro}${detailLine}\n内容の抽出に失敗しました。ファイルの形式やエンコードを確認してください。`
+          : `${intro}${detailLine}\nUnable to extract content from the document. Please verify the file format or encoding.`
         parts.push({
           type: 'text',
-          text: `${intro}${detailLine}\n内容の抽出に失敗しました。ファイルの形式やエンコードを確認してください。`
+          text: appendDirective(fallbackMessage, targetLanguage)
         })
       }
       continue
@@ -145,17 +210,28 @@ async function buildAttachmentParts(
 
     if (attachment.type.startsWith('text/') || attachment.name.match(/\.(txt|md|json|sql|py|js|ts|jsx|tsx)$/i)) {
       const textContent = decodeTextBase64(attachment.base64)
+      const label = isJapanese ? 'テキストファイル' : 'Text file'
+      const suffix = textContent.length > MAX_ATTACHMENT_TEXT_LENGTH ? (isJapanese ? '\n...（省略）' : '\n... (truncated)') : ''
+      const text = `【${label}: ${attachment.name}】\n${textContent.slice(0, MAX_ATTACHMENT_TEXT_LENGTH)}${suffix}`
       parts.push({
         type: 'text',
-        text: `【テキストファイル: ${attachment.name}】\n${textContent.slice(0, MAX_ATTACHMENT_TEXT_LENGTH)}${textContent.length > MAX_ATTACHMENT_TEXT_LENGTH ? '\n...（省略）' : ''}`
+        text: appendDirective(text, targetLanguage)
       })
       continue
     }
 
     const fallbackBase64 = ensureBase64(attachment)
+    const label = isJapanese ? 'ファイル' : 'File'
+    const typeLabel = isJapanese ? '種別' : 'Type'
+    const sizeLabel = isJapanese ? 'サイズ' : 'Size'
+    const baseLabel = isJapanese ? 'Base64 データ冒頭' : 'Base64 preview'
+    let text = `【${label}: ${attachment.name}】\n${typeLabel}: ${attachment.type}\n${sizeLabel}: ${attachment.size} bytes`
+    if (fallbackBase64) {
+      text += `\n${baseLabel}: ${fallbackBase64.slice(0, 120)}...`
+    }
     parts.push({
       type: 'text',
-      text: `【ファイル: ${attachment.name}】\n種別: ${attachment.type}\nサイズ: ${attachment.size} bytes${fallbackBase64 ? `\nBase64 データ冒頭: ${fallbackBase64.slice(0, 120)}...` : ''}`
+      text: appendDirective(text, targetLanguage)
     })
   }
 
@@ -165,7 +241,8 @@ async function buildAttachmentParts(
 export async function buildContentParts(
   message: string,
   attachments: import('@/types/chat').FileAttachment[] = [],
-  prependText?: string
+  prependText?: string,
+  languageMode: LanguageCode = 'auto'
 ): Promise<MessageContentPart[]> {
   const parts: MessageContentPart[] = []
 
@@ -173,16 +250,22 @@ export async function buildContentParts(
     parts.push({ type: 'text', text: prependText })
   }
 
-  parts.push({ type: 'text', text: buildMessageIntro(message, attachments) })
+  const targetLanguage = resolveLanguagePreference(languageMode, message)
 
-  const attachmentParts = await buildAttachmentParts(attachments)
+  parts.push({ type: 'text', text: buildMessageIntro(message, attachments, targetLanguage) })
+
+  const attachmentParts = await buildAttachmentParts(attachments, targetLanguage)
   parts.push(...attachmentParts)
 
   return parts
 }
 
-export async function sendMessage(message: string, attachments?: import('@/types/chat').FileAttachment[]): Promise<ReadableStream<Uint8Array>> {
-  const contentParts = await buildContentParts(message, attachments)
+export async function sendMessage(
+  message: string,
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  languageMode: LanguageCode = 'auto'
+): Promise<ReadableStream<Uint8Array>> {
+  const contentParts = await buildContentParts(message, attachments, undefined, languageMode)
 
   const request = {
     model: API_CONFIG.DEFAULT_MODEL,
@@ -211,8 +294,21 @@ export async function sendMessage(message: string, attachments?: import('@/types
   return response.body!
 }
 
-export async function sendMessageWithGPT(message: string, customGPT: CustomGPT, chatHistory: import('@/types/chat').Message[] = [], attachments?: import('@/types/chat').FileAttachment[]): Promise<ReadableStream<Uint8Array>> {
-  const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(message)
+export async function sendMessageWithGPT(
+  message: string,
+  customGPT: CustomGPT,
+  chatHistory: import('@/types/chat').Message[] = [],
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  languageMode: LanguageCode = 'auto'
+): Promise<ReadableStream<Uint8Array>> {
+  const hasJapanese = REGEX_PATTERNS.JAPANESE.test(message)
+  const targetLanguage = resolveLanguagePreference(languageMode, message)
+
+  const languageInstruction = targetLanguage !== 'auto'
+    ? LANGUAGE_METADATA[targetLanguage]?.systemInstruction ?? ''
+    : hasJapanese
+      ? 'The user is communicating in Japanese. Please respond in Japanese and pay special attention to Japanese text in images or documents. When analyzing Office documents, focus on extracting Japanese text content accurately.'
+      : ''
 
   const systemMessage = {
     role: 'system',
@@ -228,10 +324,10 @@ ${browserTool.isEnabled() ? browserTool.getToolDescription() : ''}
 
 ${pythonTool.isEnabled() ? pythonTool.getToolDescription() : ''}
 
-${hasJapanese ? 'The user is communicating in Japanese. Please respond in Japanese and pay special attention to Japanese text in images or documents. When analyzing Office documents, focus on extracting Japanese text content accurately.' : ''}`
+${languageInstruction}`
   }
 
-  const contentParts = await buildContentParts(message, attachments)
+  const contentParts = await buildContentParts(message, attachments, undefined, languageMode)
 
   const historyMessages = chatHistory.slice(-10).map(msg => ({
     role: msg.role,

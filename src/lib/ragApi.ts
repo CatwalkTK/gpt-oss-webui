@@ -3,7 +3,9 @@ import { SearchResult } from '@/hooks/useVectorSearch'
 import { API_CONFIG } from './constants'
 import { browserTool } from './browserTool'
 import { pythonTool } from './pythonTool'
-import { buildContentParts } from './api'
+import { buildContentParts, resolveLanguagePreference } from './api'
+import type { LanguageCode } from '@/types/settings'
+import { LANGUAGE_METADATA } from '@/types/settings'
 
 function formatSearchContext(searchResults: SearchResult[]): string | undefined {
   if (searchResults.length === 0) {
@@ -29,13 +31,15 @@ ${contextSections.join('\n\n')}`
 export async function sendMessageWithRAG(
   message: string,
   searchResults: SearchResult[] = [],
-  attachments?: import('@/types/chat').FileAttachment[]
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  languageMode: LanguageCode = 'auto'
 ): Promise<ReadableStream<Uint8Array>> {
   const context = formatSearchContext(searchResults)
   const contentParts = await buildContentParts(
     message,
     attachments,
-    context ? `${context}\n\n指示: 上記の参考文書をもとに回答し、可能であれば出典を示してください。` : undefined
+    context ? `${context}\n\n指示: 上記の参考文書をもとに回答し、可能であれば出典を示してください。` : undefined,
+    languageMode
   )
 
   const request = {
@@ -70,10 +74,18 @@ export async function sendMessageWithGPTAndRAG(
   customGPT: CustomGPT,
   chatHistory: import('@/types/chat').Message[] = [],
   searchResults: SearchResult[] = [],
-  attachments?: import('@/types/chat').FileAttachment[]
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  languageMode: LanguageCode = 'auto'
 ): Promise<ReadableStream<Uint8Array>> {
   const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(message)
   const context = formatSearchContext(searchResults)
+  const targetLanguage = resolveLanguagePreference(languageMode, message)
+
+  const languageInstruction = targetLanguage !== 'auto'
+    ? LANGUAGE_METADATA[targetLanguage]?.systemInstruction ?? ''
+    : hasJapanese
+      ? 'The user is communicating in Japanese. Respond in natural Japanese, and pay extra attention to Japanese content found in attached files.'
+      : ''
 
   const systemMessage = {
     role: 'system',
@@ -91,13 +103,14 @@ ${browserTool.isEnabled() ? browserTool.getToolDescription() : ''}
 
 ${pythonTool.isEnabled() ? pythonTool.getToolDescription() : ''}
 
-${hasJapanese ? 'The user is communicating in Japanese. Respond in natural Japanese, and pay extra attention to Japanese content found in attached files.' : ''}`
+${languageInstruction}`
   }
 
   const contentParts = await buildContentParts(
     message,
     attachments,
-    context ? `${context}\n\n指示: ${customGPT.name}として、参考文書の内容を根拠に回答し、引用元を明示してください。` : undefined
+    context ? `${context}\n\n指示: ${customGPT.name}として、参考文書の内容を根拠に回答し、引用元を明示してください。` : undefined,
+    languageMode
   )
 
   const historyMessages = chatHistory.slice(-10).map(msg => ({

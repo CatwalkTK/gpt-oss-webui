@@ -23,5 +23,6 @@ export const STORAGE_KEYS = {
   CHATS: 'chats',
   CUSTOM_GPTS: 'customGPTs',
   SELECTED_GPT: 'selectedGPT',
-  START_NEW_CHAT: 'startNewChat'
+  START_NEW_CHAT: 'startNewChat',
+  SETTINGS: 'settings'
 } as const

@@ -1,8 +1,8 @@
 # 💼 Commercial License Inquiry
 
-## GPT-OSS WebUI with Vector Search RAG - Commercial License
+## Clavi Local Mining with Vector Search RAG - Commercial License
 
-Thank you for your interest in using GPT-OSS WebUI with Vector Search RAG for commercial purposes!
+Thank you for your interest in using Clavi Local Mining with Vector Search RAG for commercial purposes!
 
 ## 🚀 **What You Get with Commercial License**
 
@@ -114,7 +114,7 @@ Please provide the following information:
 
 **Email**: [tsuda@ryowa-inc.co.jp](mailto:tsuda@ryowa-inc.co.jp)
 
-**Subject**: Commercial License Inquiry - GPT-OSS WebUI RAG
+**Subject**: Commercial License Inquiry - Clavi Local Mining RAG
 
 **Include**: 
 - Completed form above
@@ -150,6 +150,6 @@ All commercial licenses include:
 
 ---
 
-**Ready to get started?** Send your inquiry today and unlock the full commercial potential of GPT-OSS WebUI with Vector Search RAG!
+**Ready to get started?** Send your inquiry today and unlock the full commercial potential of Clavi Local Mining with Vector Search RAG!
 
 *This document is subject to change. Please refer to the main LICENSE file for the most current licensing terms.*

@@ -2,6 +2,7 @@
 
 import { CustomGPT } from '@/types/mygpt'
 import { useState, useEffect } from 'react'
+import { useUIText } from '@/hooks/useUIText'
 
 interface LoadingMessageProps {
   selectedGPT?: CustomGPT | null
@@ -10,6 +11,7 @@ interface LoadingMessageProps {
 export default function LoadingMessage({ selectedGPT }: LoadingMessageProps) {
   const [dots, setDots] = useState('')
   const [thinkingText, setThinkingText] = useState('Thinking')
+  const t = useUIText()
 
   useEffect(() => {
     const thinkingMessages = [
@@ -39,7 +41,7 @@ export default function LoadingMessage({ selectedGPT }: LoadingMessageProps) {
           </div>
         ) : (
           <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center animate-pulse">
-            <span className="text-sm font-bold">G</span>
+            <span className="text-[10px] font-bold">CLM</span>
           </div>
         )}
       </div>
@@ -56,6 +58,11 @@ export default function LoadingMessage({ selectedGPT }: LoadingMessageProps) {
         {selectedGPT && (
           <div className="text-xs text-gpt-gray-400 mt-2">
             Using {selectedGPT.name}
+          </div>
+        )}
+        {!selectedGPT && (
+          <div className="text-xs text-gpt-gray-400 mt-2">
+            {t('appName')}
           </div>
         )}
       </div>

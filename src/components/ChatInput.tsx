@@ -5,6 +5,9 @@ import { PaperAirplaneIcon, PaperClipIcon } from '@heroicons/react/24/solid'
 import { FileAttachment } from '@/types/chat'
 import { readFileAsDataURL, readFileAsText, isOfficeDocument, isTextFile } from '@/lib/fileUtils'
 import FileAttachmentComponent from './FileAttachment'
+import { useSettings } from '@/context/SettingsContext'
+import { LANGUAGE_METADATA } from '@/types/settings'
+import { useUIText } from '@/hooks/useUIText'
 
 interface ChatInputProps {
   onSendMessage: (message: string, attachments?: FileAttachment[]) => void
@@ -15,6 +18,32 @@ export default function ChatInput({ onSendMessage, disabled = false }: ChatInput
   const [message, setMessage] = useState('')
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { settings } = useSettings()
+  const t = useUIText()
+
+  const languageLabel = settings.language === 'auto' ? '' : LANGUAGE_METADATA[settings.language]?.label
+  const appName = t('appName')
+  const placeholder = settings.language === 'ja'
+    ? `${appName} に日本語でメッセージ...`
+    : settings.language === 'fr'
+      ? `Envoyer un message à ${appName}...`
+      : settings.language === 'it'
+        ? `Scrivi a ${appName}...`
+        : settings.language === 'pt'
+          ? `Envie uma mensagem para ${appName}...`
+          : settings.language === 'de'
+            ? `Nachricht an ${appName}...`
+            : settings.language === 'zh'
+              ? `向 ${appName} 发送消息...`
+              : settings.language === 'ko'
+                ? `${appName}에게 메시지를 보내세요...`
+                : settings.language === 'th'
+                  ? `ส่งข้อความถึง ${appName}...`
+                  : settings.language === 'vi'
+                    ? `Gửi tin nhắn cho ${appName}...`
+                    : settings.language === 'auto'
+                      ? `Message ${appName}...`
+                      : `Message ${appName} (${languageLabel ?? 'Preferred language'})...`
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,7 +120,7 @@ export default function ChatInput({ onSendMessage, disabled = false }: ChatInput
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message GPT-OSS..."
+            placeholder={placeholder}
             disabled={disabled}
             className="w-full px-4 py-3 pr-24 bg-gpt-gray-800 border border-gpt-gray-700 rounded-xl 
                      text-white placeholder-gpt-gray-400 resize-none focus:outline-none focus:ring-2 
@@ -116,7 +145,7 @@ export default function ChatInput({ onSendMessage, disabled = false }: ChatInput
               multiple
               accept="image/*,.pdf,.txt,.md,.doc,.docx,.xlsx,.xls,.pptx,.ppt"
               onChange={handleFileSelect}
-              className="hidden"
+              style={{ display: 'none' }}
             />
             <button
               type="button"
@@ -138,7 +167,7 @@ export default function ChatInput({ onSendMessage, disabled = false }: ChatInput
         </form>
         
         <div className="text-xs text-gpt-gray-500 text-center mt-3">
-          GPT-OSS can make mistakes. Check important info.
+          {t('disclaimer')}
         </div>
       </div>
     </div>

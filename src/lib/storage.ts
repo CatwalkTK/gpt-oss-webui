@@ -1,6 +1,7 @@
 import { Chat } from '@/types/chat'
 import { CustomGPT } from '@/types/mygpt'
 import { STORAGE_KEYS } from './constants'
+import { UserSettings, DEFAULT_SETTINGS } from '@/types/settings'
 
 const MAX_CHATS = 50 // Limit number of stored chats
 const MAX_MESSAGES_PER_CHAT = 100 // Limit messages per chat
@@ -205,7 +206,8 @@ export function performStorageCleanup(): void {
     const essentialKeys = [
       STORAGE_KEYS.CHATS,
       STORAGE_KEYS.CUSTOM_GPTS,
-      STORAGE_KEYS.SELECTED_GPT
+      STORAGE_KEYS.SELECTED_GPT,
+      STORAGE_KEYS.SETTINGS
     ]
 
     const keysToRemove: string[] = []
@@ -241,4 +243,31 @@ export function performStorageCleanup(): void {
   } catch (error) {
     console.error('Storage cleanup failed:', error)
   }
+}
+
+export function saveSettings(settings: UserSettings): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings))
+  } catch (error) {
+    console.error('Failed to save settings:', error)
+  }
+}
+
+export function loadSettings(): UserSettings {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS)
+    if (saved) {
+      return {
+        ...DEFAULT_SETTINGS,
+        ...JSON.parse(saved)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load settings:', error)
+  }
+  return DEFAULT_SETTINGS
+}
+
+export function clearSettings(): void {
+  localStorage.removeItem(STORAGE_KEYS.SETTINGS)
 }

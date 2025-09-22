@@ -1,12 +1,12 @@
-import { API_CONFIG } from './constants'
+import { extractOfficeDocumentFromBase64 } from './officeExtractor'
 
 export class EmbeddingService {
   private readonly EMBEDDING_MODEL = 'nomic-embed-text'
 
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      // First try Ollama's embedding endpoint
-      let response = await fetch(`${API_CONFIG.BASE_URL}/api/embeddings`, {
+      // Use Next.js API route to proxy to Ollama
+      const response = await fetch('/api/embeddings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -16,20 +16,6 @@ export class EmbeddingService {
           prompt: text,
         }),
       })
-
-      // If 404, try the alternative endpoint format
-      if (response.status === 404) {
-        response = await fetch(`${API_CONFIG.BASE_URL}/api/embed`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: this.EMBEDDING_MODEL,
-            input: text,
-          }),
-        })
-      }
 
       if (!response.ok) {
         throw new Error(`Embedding API error: ${response.status}`)
@@ -82,28 +68,70 @@ export class EmbeddingService {
     return chunks.filter(chunk => chunk.trim().length > 0)
   }
 
-  extractTextFromContent(content: string, fileType: string, fileName: string): string {
+  async extractTextFromContent(content: string, fileType: string, fileName: string): Promise<string> {
     // Handle different file types
     if (fileType.startsWith('text/') || fileName.endsWith('.txt') || fileName.endsWith('.md')) {
       return content
     }
 
     if (fileType === 'application/pdf') {
-      // For PDF files, content might be base64 encoded or already extracted
       try {
-        // If it's base64, decode it (simplified approach)
-        if (content.startsWith('data:application/pdf;base64,')) {
-          return `[PDF Content: ${fileName}] Content extraction from PDF would require additional processing.`
+        // Use server-side PDF extraction API
+        const response = await fetch('/api/pdf-extract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            base64Data: content,
+            fileName: fileName
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`PDF extraction failed: ${response.status}`)
         }
-        return content
-      } catch {
-        return `[PDF: ${fileName}] Unable to extract text content.`
+
+        const { text, pages, metadata, requiresClientSideProcessing } = await response.json()
+
+        if (requiresClientSideProcessing) {
+          return `[PDF: ${fileName}] This PDF requires client-side processing for text extraction. The vector search system will show this as a placeholder until proper PDF processing is implemented.`
+        }
+
+        return text
+
+      } catch (error) {
+        console.error('PDF text extraction failed:', error)
+        return `[PDF: ${fileName}] Failed to extract text content: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
 
     if (fileName.match(/\.(docx?|xlsx?|pptx?)$/i)) {
-      // Office documents
-      return `[Office Document: ${fileName}] ${content}`
+      const extraction = await extractOfficeDocumentFromBase64(content, fileName, fileType)
+
+      if (extraction?.text) {
+        const metaSummary: string[] = []
+        if (extraction.metadata?.sheetNames?.length) {
+          metaSummary.push(`シート: ${extraction.metadata.sheetNames.join(', ')}`)
+        }
+        if (typeof extraction.metadata?.rowCount === 'number' && extraction.metadata.rowCount > 0) {
+          metaSummary.push(`行数: ${extraction.metadata.rowCount}`)
+        }
+        if (typeof extraction.metadata?.paragraphCount === 'number' && extraction.metadata.paragraphCount > 0) {
+          metaSummary.push(`段落数: ${extraction.metadata.paragraphCount}`)
+        }
+        if (typeof extraction.metadata?.slideCount === 'number' && extraction.metadata.slideCount > 0) {
+          metaSummary.push(`スライド数: ${extraction.metadata.slideCount}`)
+        }
+
+        const header = metaSummary.length > 0
+          ? `【Office Document: ${fileName}】\n${metaSummary.join(' / ')}`
+          : `【Office Document: ${fileName}】`
+
+        return `${header}\n---\n${extraction.text}`
+      }
+
+      return `[Office Document: ${fileName}] 添付ファイルからテキストを抽出できませんでした。`
     }
 
     if (fileType.startsWith('image/')) {
@@ -114,12 +142,12 @@ export class EmbeddingService {
   }
 
   async processFileForIndexing(
-    content: string, 
-    fileName: string, 
-    filePath: string, 
+    content: string,
+    fileName: string,
+    filePath: string,
     fileType: string
   ): Promise<Array<{ content: string; embedding: number[] }>> {
-    const extractedText = this.extractTextFromContent(content, fileType, fileName)
+    const extractedText = await this.extractTextFromContent(content, fileType, fileName)
     
     if (extractedText.length < 10) {
       // Skip very short content

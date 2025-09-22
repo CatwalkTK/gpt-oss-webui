@@ -1,69 +1,202 @@
-import { ResponsesRequest } from '@/types/chat'
 import { CustomGPT } from '@/types/mygpt'
 import { API_CONFIG, REGEX_PATTERNS } from './constants'
+import { browserTool } from './browserTool'
+import { pythonTool } from './pythonTool'
+import { extractOfficeDocumentFromBase64 } from './officeExtractor'
 
-function createAttachmentContent(att: import('@/types/chat').FileAttachment) {
-  if (att.type.startsWith('image/')) {
-    return {
-      type: 'image_url',
-      image_url: { url: att.url }
+export type MessageContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
+const MAX_ATTACHMENT_TEXT_LENGTH = 8_000
+
+async function extractPdfContent(att: import('@/types/chat').FileAttachment): Promise<string> {
+  try {
+    const response = await fetch('/api/pdf-extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Data: att.base64, fileName: att.name })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'unknown error')
+      console.warn(`PDF extraction request failed (${response.status}):`, errorText)
+      return `【PDF: ${att.name}】\nPDFのテキスト抽出中に問題が発生しました（ステータス: ${response.status}）。ファイル名と文脈から推測して回答してください。`
     }
-  } else if (REGEX_PATTERNS.OFFICE_FILES.test(att.name)) {
-    return {
-      type: 'text',
-      text: `[Microsoft Office Document: ${att.name}]\nThis is a ${att.name.split('.').pop()?.toUpperCase()} file. Please extract and analyze the text content from this document. Focus on any Japanese text if present. The document content should be interpreted from the following base64 data: ${att.base64}`
-    }
-  } else {
-    return {
-      type: 'text',
-      text: `[File: ${att.name}]\n${att.base64 ? atob(att.base64) : 'File content not available'}`
-    }
+
+    const { text, pages, wordCount } = await response.json()
+    return `【PDF: ${att.name}】\nページ数: ${pages}\n語数: 約${wordCount}\n---\n${text}`
+  } catch (error) {
+    console.error('PDF processing error:', error)
+    return `【PDF: ${att.name}】\nPDFのテキスト抽出中にエラーが発生しました。ファイル名と文脈から推測して回答してください。`
   }
 }
 
-function enhanceMessageForAttachments(message: string, attachments: import('@/types/chat').FileAttachment[]): string {
-  if (!attachments || attachments.length === 0) return message
-  
-  const hasJapanese = REGEX_PATTERNS.JAPANESE.test(message)
-  const hasImages = attachments.some(att => att.type.startsWith('image/'))
-  const hasOffice = attachments.some(att => REGEX_PATTERNS.OFFICE_FILES.test(att.name))
-  
-  if (hasOffice && hasJapanese) {
-    return `Officeドキュメントを分析して内容を抽出し、日本語で回答してください。ドキュメント内の日本語テキストに特に注意してください。ユーザーメッセージ: ${message}`
-  } else if (hasOffice) {
-    return `Please analyze the Office document(s) and extract their content. Pay attention to any text, tables, or structured data. User message: ${message}`
-  } else if (hasImages && hasJapanese) {
-    return `Please analyze the image(s) and respond in Japanese. User message: ${message}`
-  } else if (hasImages) {
-    return `Please analyze the image(s). User message: ${message}`
+function ensureBase64(att: import('@/types/chat').FileAttachment): string | null {
+  if (att.base64) return att.base64
+  if (att.url?.startsWith('data:')) {
+    const commaIndex = att.url.indexOf(',')
+    if (commaIndex !== -1) {
+      return att.url.slice(commaIndex + 1)
+    }
   }
-  
-  return message
+  return null
+}
+
+function buildMessageIntro(message: string, attachments: import('@/types/chat').FileAttachment[] = []): string {
+  if (attachments.length === 0) {
+    return message
+  }
+
+  const hasJapanese = REGEX_PATTERNS.JAPANESE.test(message)
+  const attachmentSummary = attachments
+    .map(att => `- ${att.name} (${att.type || 'unknown'}, ${att.size} bytes)`)
+    .join('\n')
+
+  return hasJapanese
+    ? `以下の添付ファイルを参考にして日本語で回答してください。添付ファイル一覧:\n${attachmentSummary}\n\nユーザーの質問: ${message}`
+    : `Please reference the attached files when answering. Attachments:\n${attachmentSummary}\n\nUser message: ${message}`
+}
+
+function decodeTextBase64(data: string | undefined): string {
+  if (!data) return ''
+  try {
+    // Many text attachments already store raw text in the base64 field; fallback to decoding if needed
+    if (/^[\x00-\x7F\s]+$/.test(data)) {
+      return data
+    }
+    return atob(data)
+  } catch (error) {
+    console.warn('Failed to decode text attachment base64:', error)
+    return data
+  }
+}
+
+async function buildAttachmentParts(
+  attachments: import('@/types/chat').FileAttachment[] = []
+): Promise<MessageContentPart[]> {
+  const parts: MessageContentPart[] = []
+
+  for (const attachment of attachments) {
+    if (attachment.type.startsWith('image/')) {
+      const base64 = ensureBase64(attachment)
+      if (!base64) {
+        console.warn(`Image attachment ${attachment.name} missing base64 data`)
+        continue
+      }
+      const dataUrl = attachment.url?.startsWith('data:')
+        ? attachment.url
+        : `data:${attachment.type || 'image/png'};base64,${base64}`
+
+      parts.push({
+        type: 'image_url',
+        image_url: { url: dataUrl }
+      })
+      parts.push({ type: 'text', text: `【画像: ${attachment.name}】上記の画像を詳細に分析してください。` })
+      continue
+    }
+
+    if (attachment.type === 'application/pdf' || REGEX_PATTERNS.PDF_FILES.test(attachment.name)) {
+      const text = await extractPdfContent(attachment)
+      parts.push({ type: 'text', text: text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH) })
+      continue
+    }
+
+    if (REGEX_PATTERNS.OFFICE_FILES.test(attachment.name)) {
+      const base64 = ensureBase64(attachment)
+      const extraction = await extractOfficeDocumentFromBase64(base64, attachment.name, attachment.type)
+
+      const intro = `【Office文書: ${attachment.name}】\nファイル種別: ${attachment.type || 'application/octet-stream'}\nサイズ: ${attachment.size} bytes`
+
+      const metadataSummary: string[] = []
+      if (extraction?.metadata?.sheetNames?.length) {
+        metadataSummary.push(`シート: ${extraction.metadata.sheetNames.join(', ')}`)
+      }
+      if (typeof extraction?.metadata?.rowCount === 'number' && extraction.metadata.rowCount > 0) {
+        metadataSummary.push(`行数: ${extraction.metadata.rowCount}`)
+      }
+      if (typeof extraction?.metadata?.paragraphCount === 'number' && extraction.metadata.paragraphCount > 0) {
+        metadataSummary.push(`段落数: ${extraction.metadata.paragraphCount}`)
+      }
+      if (typeof extraction?.metadata?.slideCount === 'number' && extraction.metadata.slideCount > 0) {
+        metadataSummary.push(`スライド数: ${extraction.metadata.slideCount}`)
+      }
+      if (extraction?.metadata?.summary) {
+        metadataSummary.push(extraction.metadata.summary)
+      }
+
+      const detailLine = metadataSummary.length > 0 ? `\n概要: ${metadataSummary.join(' / ')}` : ''
+
+      if (extraction?.text) {
+        const trimmed = extraction.text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH)
+        const suffix = extraction.text.length > MAX_ATTACHMENT_TEXT_LENGTH ? '\n...（省略）' : ''
+        parts.push({
+          type: 'text',
+          text: `${intro}${detailLine}\n---\n${trimmed}${suffix}`
+        })
+      } else {
+        parts.push({
+          type: 'text',
+          text: `${intro}${detailLine}\n内容の抽出に失敗しました。ファイルの形式やエンコードを確認してください。`
+        })
+      }
+      continue
+    }
+
+    if (attachment.type.startsWith('text/') || attachment.name.match(/\.(txt|md|json|sql|py|js|ts|jsx|tsx)$/i)) {
+      const textContent = decodeTextBase64(attachment.base64)
+      parts.push({
+        type: 'text',
+        text: `【テキストファイル: ${attachment.name}】\n${textContent.slice(0, MAX_ATTACHMENT_TEXT_LENGTH)}${textContent.length > MAX_ATTACHMENT_TEXT_LENGTH ? '\n...（省略）' : ''}`
+      })
+      continue
+    }
+
+    const fallbackBase64 = ensureBase64(attachment)
+    parts.push({
+      type: 'text',
+      text: `【ファイル: ${attachment.name}】\n種別: ${attachment.type}\nサイズ: ${attachment.size} bytes${fallbackBase64 ? `\nBase64 データ冒頭: ${fallbackBase64.slice(0, 120)}...` : ''}`
+    })
+  }
+
+  return parts
+}
+
+export async function buildContentParts(
+  message: string,
+  attachments: import('@/types/chat').FileAttachment[] = [],
+  prependText?: string
+): Promise<MessageContentPart[]> {
+  const parts: MessageContentPart[] = []
+
+  if (prependText) {
+    parts.push({ type: 'text', text: prependText })
+  }
+
+  parts.push({ type: 'text', text: buildMessageIntro(message, attachments) })
+
+  const attachmentParts = await buildAttachmentParts(attachments)
+  parts.push(...attachmentParts)
+
+  return parts
 }
 
 export async function sendMessage(message: string, attachments?: import('@/types/chat').FileAttachment[]): Promise<ReadableStream<Uint8Array>> {
-  const enhancedMessage = enhanceMessageForAttachments(message, attachments || [])
-
-  const content = attachments && attachments.length > 0 
-    ? [
-        { type: 'text', text: enhancedMessage },
-        ...attachments.map(att => createAttachmentContent(att))
-      ]
-    : enhancedMessage
+  const contentParts = await buildContentParts(message, attachments)
 
   const request = {
     model: API_CONFIG.DEFAULT_MODEL,
     messages: [
       {
         role: 'user',
-        content
+        content: contentParts
       }
     ],
     stream: true,
     temperature: API_CONFIG.DEFAULT_TEMPERATURE
   }
 
-  const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_COMPLETIONS}`, {
+  const response = await fetch('/api/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -80,7 +213,7 @@ export async function sendMessage(message: string, attachments?: import('@/types
 
 export async function sendMessageWithGPT(message: string, customGPT: CustomGPT, chatHistory: import('@/types/chat').Message[] = [], attachments?: import('@/types/chat').FileAttachment[]): Promise<ReadableStream<Uint8Array>> {
   const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(message)
-  
+
   const systemMessage = {
     role: 'system',
     content: `You are ${customGPT.name}. ${customGPT.instructions}
@@ -89,60 +222,28 @@ ${customGPT.capabilities.webBrowsing ? 'You have web browsing capabilities.' : '
 ${customGPT.capabilities.codeInterpreter ? 'You have code interpreter capabilities.' : ''}
 ${customGPT.capabilities.dalleImageGeneration ? 'You have image generation capabilities.' : ''}
 
-You can analyze Microsoft Office documents (Word, Excel, PowerPoint) from base64 encoded data. Extract text content, tables, and structured information from these documents.
+You can analyze Microsoft Office documents (Word, Excel, PowerPoint) and PDF files. For PDF files, text content is extracted automatically. Extract text content, tables, and structured information from these documents.
+
+${browserTool.isEnabled() ? browserTool.getToolDescription() : ''}
+
+${pythonTool.isEnabled() ? pythonTool.getToolDescription() : ''}
 
 ${hasJapanese ? 'The user is communicating in Japanese. Please respond in Japanese and pay special attention to Japanese text in images or documents. When analyzing Office documents, focus on extracting Japanese text content accurately.' : ''}`
   }
 
-  let enhancedMessage = message
-  if (attachments && attachments.length > 0) {
-    const hasImages = attachments.some(att => att.type.startsWith('image/'))
-    const hasOffice = attachments.some(att => att.name.match(/\.(docx?|xlsx?|pptx?)$/i))
-    
-    if (hasOffice && hasJapanese) {
-      enhancedMessage = `Officeドキュメントを分析して内容を抽出し、日本語で回答してください。ドキュメント内の日本語テキストに特に注意してください。ユーザーメッセージ: ${message}`
-    } else if (hasOffice) {
-      enhancedMessage = `Please analyze the Office document(s) and extract their content. Pay attention to any text, tables, or structured data. User message: ${message}`
-    } else if (hasImages && hasJapanese) {
-      enhancedMessage = `画像を分析して日本語で回答してください。特に画像内の日本語テキストに注意を払ってください。ユーザーメッセージ: ${message}`
-    } else if (hasImages) {
-      enhancedMessage = `Please analyze the image(s) carefully, paying special attention to any text content. User message: ${message}`
-    }
-  }
+  const contentParts = await buildContentParts(message, attachments)
 
-  const userContent = attachments && attachments.length > 0 
-    ? [
-        { type: 'text', text: enhancedMessage },
-        ...attachments.map(att => {
-          if (att.type.startsWith('image/')) {
-            return {
-              type: 'image_url',
-              image_url: { url: att.url }
-            }
-          } else if (att.name.match(/\.(docx?|xlsx?|pptx?)$/i)) {
-            return {
-              type: 'text',
-              text: `[Microsoft Office文書: ${att.name}]\nこの${att.name.split('.').pop()?.toUpperCase()}ファイルからテキスト内容を抽出して分析してください。日本語テキストがある場合は特に注意してください。以下のbase64データから文書内容を解釈してください: ${att.base64}`
-            }
-          } else {
-            return {
-              type: 'text',
-              text: `[ファイル: ${att.name}]\n${att.base64 ? atob(att.base64) : 'ファイル内容が利用できません'}`
-            }
-          }
-        })
-      ]
-    : enhancedMessage
+  const historyMessages = chatHistory.slice(-10).map(msg => ({
+    role: msg.role,
+    content: [{ type: 'text', text: msg.content }]
+  }))
 
   const messages = [
     systemMessage,
-    ...chatHistory.slice(-10).map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
+    ...historyMessages,
     {
       role: 'user',
-      content: userContent
+      content: contentParts
     }
   ]
 
@@ -153,7 +254,7 @@ ${hasJapanese ? 'The user is communicating in Japanese. Please respond in Japane
     temperature: API_CONFIG.DEFAULT_TEMPERATURE
   }
 
-  const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_COMPLETIONS}`, {
+  const response = await fetch('/api/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

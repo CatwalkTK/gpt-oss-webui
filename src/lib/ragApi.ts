@@ -1,30 +1,13 @@
-import { ResponsesRequest } from '@/types/chat'
 import { CustomGPT } from '@/types/mygpt'
-import { API_CONFIG, REGEX_PATTERNS } from './constants'
 import { SearchResult } from '@/hooks/useVectorSearch'
+import { API_CONFIG } from './constants'
+import { browserTool } from './browserTool'
+import { pythonTool } from './pythonTool'
+import { buildContentParts } from './api'
 
-function createAttachmentContent(att: import('@/types/chat').FileAttachment) {
-  if (att.type.startsWith('image/')) {
-    return {
-      type: 'image_url',
-      image_url: { url: att.url }
-    }
-  } else if (REGEX_PATTERNS.OFFICE_FILES.test(att.name)) {
-    return {
-      type: 'text',
-      text: `[Microsoft Office Document: ${att.name}]\nThis is a ${att.name.split('.').pop()?.toUpperCase()} file. Please extract and analyze the text content from this document. Focus on any Japanese text if present. The document content should be interpreted from the following base64 data: ${att.base64}`
-    }
-  } else {
-    return {
-      type: 'text',
-      text: `[File: ${att.name}]\n${att.base64 ? atob(att.base64) : 'File content not available'}`
-    }
-  }
-}
-
-function formatSearchContext(searchResults: SearchResult[]): string {
+function formatSearchContext(searchResults: SearchResult[]): string | undefined {
   if (searchResults.length === 0) {
-    return ''
+    return undefined
   }
 
   const contextSections = searchResults.map((result, index) => {
@@ -32,84 +15,42 @@ function formatSearchContext(searchResults: SearchResult[]): string {
 関連度: ${(result.similarity * 100).toFixed(1)}%
 ファイルパス: ${result.document.metadata.filePath}
 
-内容:
+本文抜粋:
 ${result.relevantChunk}
 
 ---`
   })
 
-  return `以下は検索結果から得られた関連文書の情報です。これらの情報を参考に質問に答えてください：
+  return `以下はベクター検索で取得した関連文書の抜粋です。必ず内容を確認し、回答時には該当する文書番号を示してください。
 
-${contextSections.join('\n\n')}
-
-`
+${contextSections.join('\n\n')}`
 }
 
 export async function sendMessageWithRAG(
-  message: string, 
+  message: string,
   searchResults: SearchResult[] = [],
   attachments?: import('@/types/chat').FileAttachment[]
 ): Promise<ReadableStream<Uint8Array>> {
-  
-  const hasSearchContext = searchResults.length > 0
-  const contextPrefix = hasSearchContext ? formatSearchContext(searchResults) : ''
-  
-  let enhancedMessage = message
-  if (hasSearchContext) {
-    enhancedMessage = `${contextPrefix}
-
-ユーザーの質問: ${message}
-
-上記の参考文書の内容を踏まえて、適切に回答してください。参考文書に関連する情報がある場合は、どの文書から得た情報かを明示してください。`
-  } else {
-    enhancedMessage = message
-  }
-
-  // Handle attachments
-  if (attachments && attachments.length > 0) {
-    const hasJapanese = REGEX_PATTERNS.JAPANESE.test(enhancedMessage)
-    const hasImages = attachments.some(att => att.type.startsWith('image/'))
-    const hasOffice = attachments.some(att => REGEX_PATTERNS.OFFICE_FILES.test(att.name))
-    
-    if (hasOffice && hasJapanese) {
-      enhancedMessage = `Officeドキュメントを分析して内容を抽出し、日本語で回答してください。ドキュメント内の日本語テキストに特に注意してください。
-
-${enhancedMessage}`
-    } else if (hasOffice) {
-      enhancedMessage = `Please analyze the Office document(s) and extract their content. Pay attention to any text, tables, or structured data.
-
-${enhancedMessage}`
-    } else if (hasImages && hasJapanese) {
-      enhancedMessage = `画像を分析して日本語で回答してください。特に画像内の日本語テキストに注意を払ってください。
-
-${enhancedMessage}`
-    } else if (hasImages) {
-      enhancedMessage = `Please analyze the image(s) carefully, paying special attention to any text content.
-
-${enhancedMessage}`
-    }
-  }
-
-  const content = attachments && attachments.length > 0 
-    ? [
-        { type: 'text', text: enhancedMessage },
-        ...attachments.map(att => createAttachmentContent(att))
-      ]
-    : enhancedMessage
+  const context = formatSearchContext(searchResults)
+  const contentParts = await buildContentParts(
+    message,
+    attachments,
+    context ? `${context}\n\n指示: 上記の参考文書をもとに回答し、可能であれば出典を示してください。` : undefined
+  )
 
   const request = {
     model: API_CONFIG.DEFAULT_MODEL,
     messages: [
       {
         role: 'user',
-        content
+        content: contentParts
       }
     ],
     stream: true,
     temperature: API_CONFIG.DEFAULT_TEMPERATURE
   }
 
-  const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_COMPLETIONS}`, {
+  const response = await fetch('/api/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -125,16 +66,15 @@ ${enhancedMessage}`
 }
 
 export async function sendMessageWithGPTAndRAG(
-  message: string, 
-  customGPT: CustomGPT, 
-  chatHistory: import('@/types/chat').Message[] = [], 
+  message: string,
+  customGPT: CustomGPT,
+  chatHistory: import('@/types/chat').Message[] = [],
   searchResults: SearchResult[] = [],
   attachments?: import('@/types/chat').FileAttachment[]
 ): Promise<ReadableStream<Uint8Array>> {
-  
   const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(message)
-  const hasSearchContext = searchResults.length > 0
-  
+  const context = formatSearchContext(searchResults)
+
   const systemMessage = {
     role: 'system',
     content: `You are ${customGPT.name}. ${customGPT.instructions}
@@ -143,81 +83,34 @@ ${customGPT.capabilities.webBrowsing ? 'You have web browsing capabilities.' : '
 ${customGPT.capabilities.codeInterpreter ? 'You have code interpreter capabilities.' : ''}
 ${customGPT.capabilities.dalleImageGeneration ? 'You have image generation capabilities.' : ''}
 
-You can analyze Microsoft Office documents (Word, Excel, PowerPoint) from base64 encoded data. Extract text content, tables, and structured information from these documents.
+You can analyze Microsoft Office documents (Word, Excel, PowerPoint) and PDF files. For PDF files, analyze the extracted text and reasoning cues from the client. Extract structured data when possible and cite document references in your answer.
 
-${hasSearchContext ? 'You have access to relevant documents found through vector search. Use this information to provide more accurate and contextual responses. Always cite which documents you are referencing.' : ''}
+${context ? 'A knowledge base derived from user documents is provided in the prompt. Use it to ground your answer and reference the relevant document numbers.' : ''}
 
-${hasJapanese ? 'The user is communicating in Japanese. Please respond in Japanese and pay special attention to Japanese text in images or documents. When analyzing Office documents, focus on extracting Japanese text content accurately.' : ''}`
+${browserTool.isEnabled() ? browserTool.getToolDescription() : ''}
+
+${pythonTool.isEnabled() ? pythonTool.getToolDescription() : ''}
+
+${hasJapanese ? 'The user is communicating in Japanese. Respond in natural Japanese, and pay extra attention to Japanese content found in attached files.' : ''}`
   }
 
-  const contextPrefix = hasSearchContext ? formatSearchContext(searchResults) : ''
-  
-  let enhancedMessage = message
-  if (hasSearchContext) {
-    enhancedMessage = `${contextPrefix}
+  const contentParts = await buildContentParts(
+    message,
+    attachments,
+    context ? `${context}\n\n指示: ${customGPT.name}として、参考文書の内容を根拠に回答し、引用元を明示してください。` : undefined
+  )
 
-ユーザーの質問: ${message}
-
-上記の参考文書の内容を踏まえて、${customGPT.name}として適切に回答してください。参考文書に関連する情報がある場合は、どの文書から得た情報かを明示してください。`
-  }
-
-  // Handle attachments
-  if (attachments && attachments.length > 0) {
-    const hasImages = attachments.some(att => att.type.startsWith('image/'))
-    const hasOffice = attachments.some(att => att.name.match(/\.(docx?|xlsx?|pptx?)$/i))
-    
-    if (hasOffice && hasJapanese) {
-      enhancedMessage = `Officeドキュメントを分析して内容を抽出し、日本語で回答してください。ドキュメント内の日本語テキストに特に注意してください。
-
-${enhancedMessage}`
-    } else if (hasOffice) {
-      enhancedMessage = `Please analyze the Office document(s) and extract their content. Pay attention to any text, tables, or structured data.
-
-${enhancedMessage}`
-    } else if (hasImages && hasJapanese) {
-      enhancedMessage = `画像を分析して日本語で回答してください。特に画像内の日本語テキストに注意を払ってください。
-
-${enhancedMessage}`
-    } else if (hasImages) {
-      enhancedMessage = `Please analyze the image(s) carefully, paying special attention to any text content.
-
-${enhancedMessage}`
-    }
-  }
-
-  const userContent = attachments && attachments.length > 0 
-    ? [
-        { type: 'text', text: enhancedMessage },
-        ...attachments.map(att => {
-          if (att.type.startsWith('image/')) {
-            return {
-              type: 'image_url',
-              image_url: { url: att.url }
-            }
-          } else if (att.name.match(/\.(docx?|xlsx?|pptx?)$/i)) {
-            return {
-              type: 'text',
-              text: `[Microsoft Office文書: ${att.name}]\nこの${att.name.split('.').pop()?.toUpperCase()}ファイルからテキスト内容を抽出して分析してください。日本語テキストがある場合は特に注意してください。以下のbase64データから文書内容を解釈してください: ${att.base64}`
-            }
-          } else {
-            return {
-              type: 'text',
-              text: `[ファイル: ${att.name}]\n${att.base64 ? atob(att.base64) : 'ファイル内容が利用できません'}`
-            }
-          }
-        })
-      ]
-    : enhancedMessage
+  const historyMessages = chatHistory.slice(-10).map(msg => ({
+    role: msg.role,
+    content: [{ type: 'text', text: msg.content }]
+  }))
 
   const messages = [
     systemMessage,
-    ...chatHistory.slice(-10).map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
+    ...historyMessages,
     {
       role: 'user',
-      content: userContent
+      content: contentParts
     }
   ]
 
@@ -228,7 +121,7 @@ ${enhancedMessage}`
     temperature: API_CONFIG.DEFAULT_TEMPERATURE
   }
 
-  const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_COMPLETIONS}`, {
+  const response = await fetch('/api/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

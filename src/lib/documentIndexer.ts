@@ -1,5 +1,6 @@
 import { vectorStore, Document, DocumentEmbedding } from './vectorStore'
 import { embeddingService } from './embeddingService'
+import { isTextFile as isTextMimeType, isPDFFile, isOfficeDocument, readFileAsDataURL } from './fileUtils'
 
 export interface IndexingProgress {
   total: number
@@ -91,6 +92,12 @@ export class DocumentIndexer {
     return extensions.some(ext => fileName.toLowerCase().endsWith(ext.toLowerCase()))
   }
 
+  private async readFileAsBase64(file: File): Promise<string> {
+    const dataUrl = await readFileAsDataURL(file)
+    const commaIndex = dataUrl.indexOf(',')
+    return commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl
+  }
+
   async indexFile(file: File, filePath: string): Promise<void> {
     try {
       // Remove existing documents for this file path
@@ -98,8 +105,14 @@ export class DocumentIndexer {
 
       // Read file content
       let content: string
-      if (file.type.startsWith('text/') || this.isTextFile(file.name)) {
+      const isText = file.type.startsWith('text/') || this.isTextFile(file.name) || isTextMimeType(file.type, file.name)
+
+      if (isText) {
         content = await this.readTextFile(file)
+      } else if (isPDFFile(file.type) || file.name.toLowerCase().endsWith('.pdf')) {
+        content = await this.readFileAsBase64(file)
+      } else if (isOfficeDocument(file.name)) {
+        content = await this.readFileAsBase64(file)
       } else {
         // For binary files, use file name and type as content
         content = `File: ${file.name}\nType: ${file.type}\nSize: ${file.size} bytes`
@@ -178,7 +191,16 @@ export class DocumentIndexer {
     similarity: number
     relevantChunk: string
   }>> {
+    if (!query.trim()) {
+      return []
+    }
+
     try {
+      const stats = await vectorStore.getStats()
+      if (stats.embeddingCount === 0) {
+        return []
+      }
+
       const queryEmbedding = await embeddingService.generateEmbedding(query)
       return await vectorStore.searchSimilar(queryEmbedding, topK)
     } catch (error) {

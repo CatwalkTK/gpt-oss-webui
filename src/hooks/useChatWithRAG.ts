@@ -30,8 +30,13 @@ export function useChatWithRAG() {
     }
   }, [])
 
+  // Throttled save to prevent excessive localStorage writes
   useEffect(() => {
-    saveChats(chats)
+    const timeoutId = setTimeout(() => {
+      saveChats(chats)
+    }, 1000) // Save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId)
   }, [chats])
 
   const createNewChat = (): Chat => {

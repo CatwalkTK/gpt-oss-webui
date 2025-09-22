@@ -80,19 +80,25 @@ class VectorStore {
   async removeDocumentsByPath(filePath: string): Promise<void> {
     await this.initialize()
     const documents = await this.getDocumentsByPath(filePath)
-    const tx = this.db!.transaction(['documents', 'embeddings'], 'readwrite')
-    
+
+    // Use separate transactions to avoid conflicts
     for (const doc of documents) {
+      const tx = this.db!.transaction(['documents', 'embeddings'], 'readwrite')
+
+      // Delete document
       await tx.objectStore('documents').delete(doc.id)
-      
-      // Remove associated embeddings
-      const embeddings = await this.db!.getAllFromIndex('embeddings', 'documentId', doc.id)
+
+      // Get and delete associated embeddings using the same transaction
+      const embeddingsStore = tx.objectStore('embeddings')
+      const embeddingsIndex = embeddingsStore.index('documentId')
+      const embeddings = await embeddingsIndex.getAll(doc.id)
+
       for (const embedding of embeddings) {
-        await tx.objectStore('embeddings').delete(embedding.id)
+        await embeddingsStore.delete(embedding.id)
       }
+
+      await tx.done
     }
-    
-    await tx.done
   }
 
   async searchSimilar(queryEmbedding: number[], topK: number = 5): Promise<SearchResult[]> {

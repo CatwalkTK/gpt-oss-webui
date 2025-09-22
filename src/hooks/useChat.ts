@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { Chat, Message, FileAttachment } from '@/types/chat'
 import { CustomGPT } from '@/types/mygpt'
 import { sendMessage, sendMessageWithGPT, parseSSEStream } from '@/lib/api'
+import { sendMessageWithRAG, sendMessageWithGPTAndRAG } from '@/lib/ragApi'
+import { documentIndexer } from '@/lib/documentIndexer'
+import type { SearchResult } from '@/hooks/useVectorSearch'
 import { saveChats, loadChats } from '@/lib/storage'
 
 export function useChat() {
@@ -93,9 +96,22 @@ export function useChat() {
     setIsLoading(true)
 
     try {
+      let searchResults: SearchResult[] = []
+      try {
+        searchResults = await documentIndexer.searchDocuments(content, 5)
+      } catch (searchError) {
+        console.warn('Vector search failed, falling back to direct chat:', searchError)
+      }
+
+      const useRAG = searchResults.length > 0
+
       const stream = selectedGPT 
-        ? await sendMessageWithGPT(content, selectedGPT, currentChat?.messages || [], attachments)
-        : await sendMessage(content, attachments)
+        ? useRAG
+          ? await sendMessageWithGPTAndRAG(content, selectedGPT, currentChat?.messages || [], searchResults, attachments)
+          : await sendMessageWithGPT(content, selectedGPT, currentChat?.messages || [], attachments)
+        : useRAG
+          ? await sendMessageWithRAG(content, searchResults, attachments)
+          : await sendMessage(content, attachments)
       const sseStream = parseSSEStream(stream)
       const reader = sseStream.getReader()
 

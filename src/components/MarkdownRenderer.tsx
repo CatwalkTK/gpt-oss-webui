@@ -283,9 +283,9 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         result.push(renderFormattedText(remaining, `${keyPrefix}-post`))
       }
       
-      return <>{result}</>
+      return <React.Fragment key={`${keyPrefix}-fragment`}>{result}</React.Fragment>
     }
-    
+
     return renderFormattedText(text, keyPrefix)
   }
   
@@ -311,7 +311,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             if (beforeText.includes('*')) {
               result.push(renderFormattedText(beforeText, `${keyPrefix}-pre-${partIndex++}`))
             } else {
-              result.push(beforeText)
+              result.push(<span key={`${keyPrefix}-text-${partIndex++}`}>{beforeText}</span>)
             }
           }
           
@@ -332,7 +332,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         if (italicEnd !== -1) {
           // Add text before italic
           if (italicStart > 0) {
-            result.push(remaining.slice(0, italicStart))
+            result.push(<span key={`${keyPrefix}-pre-italic-${partIndex++}`}>{remaining.slice(0, italicStart)}</span>)
           }
           
           // Add italic text
@@ -346,11 +346,13 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       }
       
       // No more formatting found
-      result.push(remaining)
+      if (remaining.length > 0) {
+        result.push(<span key={`${keyPrefix}-remaining-${partIndex}`}>{remaining}</span>)
+      }
       break
     }
     
-    return <>{result}</>
+    return <React.Fragment key={`${keyPrefix}-text-fragment`}>{result}</React.Fragment>
   }
 
   return (

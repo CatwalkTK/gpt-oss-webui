@@ -3,13 +3,14 @@ export const API_CONFIG = {
   ENDPOINTS: {
     CHAT_COMPLETIONS: '/v1/chat/completions'
   },
-  DEFAULT_MODEL: 'deepseek-r1:7b',
+  DEFAULT_MODEL: 'qwen2.5-coder:14b',
   DEFAULT_TEMPERATURE: 0.7
 } as const
 
 export const REGEX_PATTERNS = {
   JAPANESE: /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/,
-  OFFICE_FILES: /\.(docx?|xlsx?|pptx?)$/i
+  OFFICE_FILES: /\.(docx?|xlsx?|pptx?)$/i,
+  PDF_FILES: /\.pdf$/i
 } as const
 
 export const FILE_TYPES = {

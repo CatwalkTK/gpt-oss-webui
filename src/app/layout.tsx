@@ -1,5 +1,6 @@
 import './globals.css'
 import LicenseNotice from '@/components/LicenseNotice'
+import ToastContainer from '@/components/ToastContainer'
 import { SettingsProvider } from '@/context/SettingsContext'
 
 export const metadata = {
@@ -18,6 +19,7 @@ export default function RootLayout({
         <SettingsProvider>
           {children}
           <LicenseNotice />
+          <ToastContainer />
         </SettingsProvider>
       </body>
     </html>

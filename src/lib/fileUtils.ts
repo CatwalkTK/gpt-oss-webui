@@ -34,11 +34,11 @@ export function isPDFFile(fileType: string): boolean {
 }
 
 export function isTextFile(fileType: string, fileName?: string): boolean {
-  return fileType.startsWith('text/') || 
+  return fileType.startsWith('text/') ||
          fileType.includes('document') ||
          fileType.includes('markdown') ||
-         fileName?.endsWith('.md') ||
-         fileName?.endsWith('.txt')
+         (fileName?.endsWith('.md') ?? false) ||
+         (fileName?.endsWith('.txt') ?? false)
 }
 
 export function isOfficeDocument(fileName: string): boolean {

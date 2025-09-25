@@ -117,8 +117,8 @@ export class EmbeddingService {
         if (typeof extraction.metadata?.rowCount === 'number' && extraction.metadata.rowCount > 0) {
           metaSummary.push(`行数: ${extraction.metadata.rowCount}`)
         }
-        if (typeof extraction.metadata?.paragraphCount === 'number' && extraction.metadata.paragraphCount > 0) {
-          metaSummary.push(`段落数: ${extraction.metadata.paragraphCount}`)
+        if (typeof extraction.metadata?.paragraphs === 'number' && extraction.metadata.paragraphs > 0) {
+          metaSummary.push(`段落数: ${extraction.metadata.paragraphs}`)
         }
         if (typeof extraction.metadata?.slideCount === 'number' && extraction.metadata.slideCount > 0) {
           metaSummary.push(`スライド数: ${extraction.metadata.slideCount}`)

@@ -7,6 +7,7 @@ import { documentIndexer } from '@/lib/documentIndexer'
 import type { SearchResult } from '@/hooks/useVectorSearch'
 import { saveChats, loadChats } from '@/lib/storage'
 import { useSettings } from '@/context/SettingsContext'
+import { showToast } from '@/components/ToastContainer'
 
 export function useChat() {
   const [chats, setChats] = useState<Chat[]>([])
@@ -62,6 +63,10 @@ export function useChat() {
       const remainingChats = chats.filter(chat => chat.id !== chatId)
       setCurrentChatId(remainingChats.length > 0 ? remainingChats[0].id : null)
     }
+  }
+
+  const updateChats = (newChats: Chat[]) => {
+    setChats(newChats)
   }
 
   const updateChatTitle = (chatId: string, firstMessage: string) => {
@@ -159,16 +164,38 @@ export function useChat() {
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      
+
+      // Show toast notification
+      let errorMsg = 'Failed to send message. Please try again.'
+      if (languageMode === 'ja') {
+        errorMsg = 'メッセージの送信に失敗しました。再試行してください。'
+      }
+
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMsg = languageMode === 'ja'
+            ? 'サーバーに接続できません。Ollamaが起動しているか確認してください。'
+            : 'Cannot connect to server. Please check if Ollama is running.'
+        } else if (error.message.includes('HTTP error')) {
+          errorMsg = languageMode === 'ja'
+            ? 'サーバーエラーが発生しました。しばらく待ってから再試行してください。'
+            : 'Server error occurred. Please wait and try again.'
+        }
+      }
+
+      showToast(errorMsg, 'error', 5000)
+
       const errorMessage: Message = {
         id: `msg-${Date.now()}-error`,
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: languageMode === 'ja'
+          ? 'エラーが発生しました。再試行してください。'
+          : 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date()
       }
 
-      setChats(prev => prev.map(chat => 
-        chat.id === chatId 
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId
           ? { ...chat, messages: [...chat.messages, errorMessage] }
           : chat
       ))
@@ -186,6 +213,7 @@ export function useChat() {
     createNewChat,
     selectChat,
     deleteChat,
+    updateChats,
     sendChatMessage
   }
 }

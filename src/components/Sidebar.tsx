@@ -6,6 +6,8 @@ import { Chat } from '@/types/chat'
 import { CustomGPT } from '@/types/mygpt'
 import { useUIText } from '@/hooks/useUIText'
 import { useSettings } from '@/context/SettingsContext'
+import { useChatOrganization } from '@/hooks/useChatOrganization'
+import ChatOrganizer from '@/components/ChatOrganizer'
 import { LANGUAGE_OPTIONS, LanguageCode, ThemeMode, SidebarPosition, TextSize } from '@/types/settings'
 
 interface SidebarProps {
@@ -15,13 +17,29 @@ interface SidebarProps {
   onNewChat: () => void
   onSelectChat: (chatId: string) => void
   onDeleteChat: (chatId: string) => void
+  onUpdateChats: (chats: Chat[]) => void
 }
 
-export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, onSelectChat, onDeleteChat }: SidebarProps) {
+export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, onSelectChat, onDeleteChat, onUpdateChats }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showPreferences, setShowPreferences] = useState(false)
   const t = useUIText()
   const { settings, setLanguage, updateSettings, isLoaded } = useSettings()
+
+  const {
+    folders,
+    searchQuery,
+    setSearchQuery,
+    createFolder,
+    updateFolder,
+    deleteFolder,
+    organizeChats,
+    toggleFavorite,
+    moveChatToFolder,
+    addTagToChat,
+    removeTagFromChat,
+    FOLDER_COLORS
+  } = useChatOrganization()
 
   const isJapanese = settings.language === 'ja'
   const isRight = settings.sidebarPosition === 'right'
@@ -102,47 +120,35 @@ export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, 
         fixed inset-y-0 ${panelPositionClass} z-40 w-64 bg-gpt-gray-900 ${borderClass}
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : hiddenTransform}
-        md:translate-x-0 md:static md:inset-0
+        md:translate-x-0 md:static md:inset-0 md:w-28 lg:w-72
       `}>
         <div className="flex flex-col h-full">
           <div className="p-4">
             <button
               onClick={onNewChat}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-gpt-gray-800 hover:bg-gpt-gray-700 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-gpt-gray-800 hover:bg-gpt-gray-700 rounded-lg transition-colors md:px-2 lg:px-4"
+              title={t('newChat')}
             >
-              <PlusIcon className="w-5 h-5" />
-              <span className="font-medium">{t('newChat')}</span>
+              <PlusIcon className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium md:hidden lg:inline">{t('newChat')}</span>
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2">
-            {chats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`
-                  flex items-center gap-3 px-3 py-2 mx-2 mb-1 rounded-lg cursor-pointer
-                  transition-colors group
-                  ${currentChatId === chat.id 
-                    ? 'bg-gpt-gray-800 text-white' 
-                    : 'hover:bg-gpt-gray-800 text-gpt-gray-300'
-                  }
-                `}
-                onClick={() => onSelectChat(chat.id)}
-              >
-                <ChatBubbleLeftIcon className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate text-sm">{chat.title}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDeleteChat(chat.id)
-                  }}
-                  className="opacity-0 group-hover:opacity-100 ml-auto p-1 hover:bg-gpt-gray-700 rounded"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
+          <ChatOrganizer
+            {...organizeChats(chats)}
+            folders={folders}
+            currentChatId={currentChatId}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSelectChat={onSelectChat}
+            onDeleteChat={onDeleteChat}
+            onToggleFavorite={(chatId) => toggleFavorite(chatId, chats, onUpdateChats)}
+            onMoveChatToFolder={(chatId, folderId) => moveChatToFolder(chatId, folderId, chats, onUpdateChats)}
+            onCreateFolder={createFolder}
+            onUpdateFolder={updateFolder}
+            onDeleteFolder={deleteFolder}
+            FOLDER_COLORS={FOLDER_COLORS}
+          />
 
           <div className="p-4 border-t border-gpt-gray-800 space-y-2">
             {selectedGPT && (
@@ -156,12 +162,13 @@ export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, 
                 </div>
               </div>
             )}
-            <a 
+            <a
               href="/mygpts"
-              className="flex items-center gap-3 px-3 py-2 text-gpt-gray-300 hover:bg-gpt-gray-800 hover:text-white rounded-lg transition-colors"
+              className="flex items-center gap-3 px-3 py-2 text-gpt-gray-300 hover:bg-gpt-gray-800 hover:text-white rounded-lg transition-colors md:px-2 lg:px-3"
+              title={t('myGPTs')}
             >
-              <span className="text-lg">⚡</span>
-              <span className="text-sm">{t('myGPTs')}</span>
+              <span className="text-lg flex-shrink-0">⚡</span>
+              <span className="text-sm md:hidden lg:inline">{t('myGPTs')}</span>
             </a>
             <a 
               href="/search"
@@ -271,9 +278,6 @@ export default function Sidebar({ chats, currentChatId, selectedGPT, onNewChat, 
                 </div>
               </div>
             )}
-            <div className="text-xs text-gpt-gray-500 px-3">
-              {t('appName')}
-            </div>
           </div>
         </div>
       </div>

@@ -52,7 +52,7 @@ export function saveChats(chats: Chat[]): void {
 
       try {
         // First, clear all other potential storage items to free space
-        const keysToKeep = [STORAGE_KEYS.CHATS, STORAGE_KEYS.CUSTOM_GPTS, STORAGE_KEYS.SELECTED_GPT]
+        const keysToKeep = ['chats', 'customGPTs', 'selectedGPT']
         for (let key in localStorage) {
           if (localStorage.hasOwnProperty(key) && !keysToKeep.includes(key)) {
             localStorage.removeItem(key)
@@ -93,15 +93,34 @@ export function saveChats(chats: Chat[]): void {
 export function loadChats(): Chat[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CHATS)
-    if (saved) {
-      return JSON.parse(saved).map((chat: any) => ({
-        ...chat,
-        createdAt: new Date(chat.createdAt),
-        updatedAt: new Date(chat.updatedAt)
-      }))
+    if (saved && saved.trim()) {
+      try {
+        const parsedChats = JSON.parse(saved)
+        if (Array.isArray(parsedChats)) {
+          return parsedChats.map((chat: any) => ({
+            ...chat,
+            createdAt: new Date(chat.createdAt),
+            updatedAt: new Date(chat.updatedAt)
+          }))
+        } else {
+          console.warn('Chats data is not an array, clearing corrupted data')
+          localStorage.removeItem(STORAGE_KEYS.CHATS)
+          return []
+        }
+      } catch (parseError) {
+        console.error('Failed to parse chats data, clearing corrupted data:', parseError)
+        localStorage.removeItem(STORAGE_KEYS.CHATS)
+        return []
+      }
     }
   } catch (e) {
     console.error('Failed to load chats:', e)
+    // Clear potentially corrupted data
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CHATS)
+    } catch (removeError) {
+      console.error('Failed to remove corrupted chats data:', removeError)
+    }
   }
   return []
 }
@@ -113,15 +132,33 @@ export function saveCustomGPTs(gpts: CustomGPT[]): void {
 export function loadCustomGPTs(): CustomGPT[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CUSTOM_GPTS)
-    if (saved) {
-      return JSON.parse(saved).map((gpt: any) => ({
-        ...gpt,
-        createdAt: new Date(gpt.createdAt),
-        updatedAt: new Date(gpt.updatedAt)
-      }))
+    if (saved && saved.trim()) {
+      try {
+        const parsedGPTs = JSON.parse(saved)
+        if (Array.isArray(parsedGPTs)) {
+          return parsedGPTs.map((gpt: any) => ({
+            ...gpt,
+            createdAt: new Date(gpt.createdAt),
+            updatedAt: new Date(gpt.updatedAt)
+          }))
+        } else {
+          console.warn('Custom GPTs data is not an array, clearing corrupted data')
+          localStorage.removeItem(STORAGE_KEYS.CUSTOM_GPTS)
+          return []
+        }
+      } catch (parseError) {
+        console.error('Failed to parse custom GPTs data, clearing corrupted data:', parseError)
+        localStorage.removeItem(STORAGE_KEYS.CUSTOM_GPTS)
+        return []
+      }
     }
   } catch (e) {
     console.error('Failed to load custom GPTs:', e)
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CUSTOM_GPTS)
+    } catch (removeError) {
+      console.error('Failed to remove corrupted custom GPTs data:', removeError)
+    }
   }
   return []
 }
@@ -198,17 +235,21 @@ export function clearAllChats(): void {
   console.log('All chats cleared')
 }
 
+export function clearAllStorageData(): void {
+  try {
+    localStorage.clear()
+    console.log('All localStorage data cleared')
+  } catch (error) {
+    console.error('Failed to clear localStorage:', error)
+  }
+}
+
 export function performStorageCleanup(): void {
   console.log('Performing comprehensive storage cleanup...')
 
   try {
     // Clear all non-essential localStorage items
-    const essentialKeys = [
-      STORAGE_KEYS.CHATS,
-      STORAGE_KEYS.CUSTOM_GPTS,
-      STORAGE_KEYS.SELECTED_GPT,
-      STORAGE_KEYS.SETTINGS
-    ]
+    const essentialKeys = ['chats', 'customGPTs', 'selectedGPT', 'settings']
 
     const keysToRemove: string[] = []
     for (let key in localStorage) {

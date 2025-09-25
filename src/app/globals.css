@@ -247,3 +247,22 @@ strong.font-bold {
 .space-y-2 > * + * { margin-top: 0.5rem; }
 .space-y-3 > * + * { margin-top: 0.75rem; }
 .space-y-4 > * + * { margin-top: 1rem; }
+
+/* Hide Next.js development indicators */
+#__next-build-watcher,
+[data-nextjs-dev-indicator],
+[data-nextjs-toast],
+nextjs-portal {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide Next.js development overlay components */
+.__nextjs_original-stack-frame,
+.__nextjs_original-stack-frame iframe,
+[data-nextjs-dialog-overlay],
+[data-nextjs-dialog] {
+  display: none !important;
+}

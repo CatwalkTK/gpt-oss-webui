@@ -154,7 +154,7 @@ export default function MyGPTs() {
 
         {showBuilder && (
           <GPTBuilder
-            gpt={editingGPT}
+            gpt={editingGPT || undefined}
             onSave={handleSaveGPT}
             onCancel={() => {
               setShowBuilder(false)

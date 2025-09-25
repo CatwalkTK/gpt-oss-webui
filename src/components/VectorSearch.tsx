@@ -187,8 +187,8 @@ export default function VectorSearch({ onSearchResultsChange, className = '' }: 
       {/* Drag and Drop Area */}
       <div
         className={`p-4 border-2 border-dashed transition-colors ${
-          dragOver 
-            ? 'border-blue-500 bg-blue-500/10' 
+          dragOver
+            ? 'border-blue-500 bg-blue-500/10'
             : 'border-gpt-gray-600 hover:border-gpt-gray-500'
         }`}
         onDrop={handleDrop}

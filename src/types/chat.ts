@@ -21,6 +21,16 @@ export interface Chat {
   messages: Message[]
   createdAt: Date
   updatedAt: Date
+  folderId?: string
+  isFavorite?: boolean
+  tags?: string[]
+}
+
+export interface ChatFolder {
+  id: string
+  name: string
+  color?: string
+  createdAt: Date
 }
 
 export interface APIMessage {

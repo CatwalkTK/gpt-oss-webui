@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 // pdf-parse's top-level entry runs a debug routine that tries to read a test file when bundled
 // so we import the library module directly.
-import pdf from 'pdf-parse/lib/pdf-parse.js'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pdf = require('pdf-parse/lib/pdf-parse.js') as any
 
 export const runtime = 'nodejs'
 

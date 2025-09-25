@@ -1,16 +1,29 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Sidebar from '@/components/Sidebar'
 import MessageBubble from '@/components/MessageBubble'
 import ChatInput from '@/components/ChatInput'
 import LoadingMessage from '@/components/LoadingMessage'
 import VectorSearch from '@/components/VectorSearch'
+import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp'
 import { useChat } from '@/hooks/useChat'
 import { useSelectedGPT } from '@/hooks/useSelectedGPT'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import type { SearchResult } from '@/hooks/useVectorSearch'
 import { useUIText } from '@/hooks/useUIText'
 import { useSettings } from '@/context/SettingsContext'
+
+// Emergency storage cleanup on JSON parse errors
+const clearCorruptedStorage = () => {
+  try {
+    localStorage.clear()
+    console.log('Corrupted storage cleared')
+    window.location.reload()
+  } catch (error) {
+    console.error('Failed to clear storage:', error)
+  }
+}
 
 export default function Home() {
   const {
@@ -22,16 +35,45 @@ export default function Home() {
     createNewChat,
     selectChat,
     deleteChat,
+    updateChats,
     sendChatMessage
   } = useChat()
 
   const { selectedGPT, selectGPT } = useSelectedGPT(createNewChat)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [showSearchPanel, setShowSearchPanel] = useState(false)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const t = useUIText()
   const { settings } = useSettings()
   const isSidebarRight = settings.sidebarPosition === 'right'
   const isJapanese = settings.language === 'ja'
+
+  // Handle JSON parse errors globally
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      if (event.message.includes('JSON') && event.message.includes('parse')) {
+        console.error('JSON parse error detected, clearing corrupted storage')
+        clearCorruptedStorage()
+      }
+    }
+    window.addEventListener('error', handleError)
+    return () => window.removeEventListener('error', handleError)
+  }, [])
+
+  // Keyboard shortcuts
+  const { shortcuts } = useKeyboardShortcuts({
+    onNewChat: createNewChat,
+    onToggleSearch: () => setShowSearchPanel(prev => !prev),
+    onFocusInput: () => inputRef.current?.focus(),
+    onEscape: () => {
+      // Close search panel if open, or blur input
+      if (showSearchPanel) {
+        setShowSearchPanel(false)
+      } else if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    }
+  })
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= 1280) {
@@ -52,9 +94,16 @@ export default function Home() {
         onNewChat={createNewChat}
         onSelectChat={selectChat}
         onDeleteChat={deleteChat}
+        onUpdateChats={updateChats}
       />
 
-      <div className="flex-1 flex flex-col md:ml-0" style={{ marginLeft: isSidebarRight ? 0 : "100px", marginRight: isSidebarRight ? "100px" : 0 }}>
+      <div
+        className="flex-1 flex flex-col transition-all duration-300"
+        style={{
+          marginLeft: isSidebarRight ? '0' : '80px',
+          marginRight: isSidebarRight ? '80px' : '0'
+        }}
+      >
         <div className="flex flex-col gap-3 px-6 py-4 border-b border-gpt-gray-800 bg-gpt-gray-900 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             {selectedGPT ? (
@@ -101,11 +150,13 @@ export default function Home() {
         </div>
 
         {showSearchPanel && (
-          <div className="border-b border-gpt-gray-800 bg-gpt-gray-900">
-            <VectorSearch
-              onSearchResultsChange={setSearchResults}
-              className="rounded-none border-0 bg-gpt-gray-900 h-[420px] overflow-y-auto"
-            />
+          <div className="border-b border-gpt-gray-800 bg-gpt-gray-900 flex justify-center">
+            <div className="w-full max-w-md">
+              <VectorSearch
+                onSearchResultsChange={setSearchResults}
+                className="rounded-none border-0 bg-gpt-gray-900 h-[420px] overflow-y-auto"
+              />
+            </div>
           </div>
         )}
 
@@ -124,7 +175,7 @@ export default function Home() {
               {isLoading && <LoadingMessage selectedGPT={selectedGPT} />}
               <div ref={messagesEndRef} />
             </div>
-            <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+            <ChatInput ref={inputRef} onSendMessage={handleSendMessage} disabled={isLoading} />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -185,6 +236,8 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <KeyboardShortcutsHelp />
     </div>
   )
 }

@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useSettings } from '@/context/SettingsContext'
-import { clearAllChats, getStorageInfo, performStorageCleanup } from '@/lib/storage'
+import { clearAllChats, clearAllStorageData, getStorageInfo, performStorageCleanup, loadChats, saveChats, loadCustomGPTs, saveCustomGPTs } from '@/lib/storage'
 import { useUIText } from '@/hooks/useUIText'
+import ChatExportImport from '@/components/ChatExportImport'
+import { Chat } from '@/types/chat'
+import { CustomGPT } from '@/types/mygpt'
 
 interface StorageInfoState {
   used: number
@@ -17,12 +20,16 @@ export default function SettingsPage() {
   const { settings } = useSettings()
   const [storageInfo, setStorageInfo] = useState<StorageInfoState>({ used: 0, limit: 5_000_000, percentage: 0 })
   const [statusMessage, setStatusMessage] = useState<string>('')
+  const [chats, setChats] = useState<Chat[]>([])
+  const [customGPTs, setCustomGPTs] = useState<CustomGPT[]>([])
   const t = useUIText()
   const isJapanese = settings.language === 'ja'
 
   useEffect(() => {
     try {
       setStorageInfo(getStorageInfo())
+      setChats(loadChats())
+      setCustomGPTs(loadCustomGPTs())
     } catch (error) {
       console.error('Failed to read storage info:', error)
     }
@@ -45,6 +52,49 @@ export default function SettingsPage() {
     performStorageCleanup()
     setStorageInfo(getStorageInfo())
     setStatusMessage(isJapanese ? 'ストレージのクリーンアップが完了しました。' : 'Storage cleanup complete.')
+  }
+
+  const handleClearAllStorage = () => {
+    const confirmation = isJapanese
+      ? 'すべてのローカルデータ（チャット、設定、フォルダなど）を削除します。この操作は元に戻せません。続行しますか？'
+      : 'This will delete ALL local data (chats, settings, folders, etc.). This action cannot be undone. Continue?'
+    if (confirm(confirmation)) {
+      clearAllStorageData()
+      setStatusMessage(isJapanese ? 'すべてのローカルデータを削除しました。ページを再読み込みします。' : 'All local data cleared. The page will refresh.')
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    }
+  }
+
+  const handleImport = (importedChats: Chat[], importedGPTs: CustomGPT[]) => {
+    try {
+      // Merge with existing data
+      const mergedChats = [...chats, ...importedChats]
+      const mergedGPTs = [...customGPTs, ...importedGPTs]
+
+      // Save to storage
+      saveChats(mergedChats)
+      saveCustomGPTs(mergedGPTs)
+
+      // Update state
+      setChats(mergedChats)
+      setCustomGPTs(mergedGPTs)
+      setStorageInfo(getStorageInfo())
+
+      setStatusMessage(
+        isJapanese
+          ? `${importedChats.length}件のチャットと${importedGPTs.length}件のGPTをインポートしました。`
+          : `Imported ${importedChats.length} chats and ${importedGPTs.length} GPTs.`
+      )
+    } catch (error) {
+      console.error('Failed to save imported data:', error)
+      setStatusMessage(
+        isJapanese
+          ? 'インポートしたデータの保存に失敗しました。'
+          : 'Failed to save imported data.'
+      )
+    }
   }
 
   return (
@@ -91,11 +141,25 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={handleClearChats}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg transition-colors"
             >
               {isJapanese ? 'チャット履歴をすべて削除' : 'Clear all chats'}
             </button>
+            <button
+              onClick={handleClearAllStorage}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+            >
+              {isJapanese ? 'すべてのデータを削除' : 'Clear all data'}
+            </button>
           </div>
+        </section>
+
+        <section className="bg-gpt-gray-800 border border-gpt-gray-700 rounded-xl p-6">
+          <ChatExportImport
+            chats={chats}
+            customGPTs={customGPTs}
+            onImport={handleImport}
+          />
         </section>
 
         {statusMessage && (

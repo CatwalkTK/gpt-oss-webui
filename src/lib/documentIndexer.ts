@@ -53,7 +53,8 @@ export class DocumentIndexer {
     path: string = '',
     files: Array<{ file: File; path: string }> = []
   ): Promise<Array<{ file: File; path: string }>> {
-    for await (const [name, handle] of directoryHandle.entries()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for await (const [name, handle] of (directoryHandle as any).entries()) {
       const currentPath = path ? `${path}/${name}` : name
 
       if (handle.kind === 'file') {

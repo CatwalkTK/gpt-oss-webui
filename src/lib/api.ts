@@ -168,11 +168,11 @@ async function buildAttachmentParts(
             : `Rows: ${extraction.metadata.rowCount}`
         )
       }
-      if (typeof extraction?.metadata?.paragraphCount === 'number' && extraction.metadata.paragraphCount > 0) {
+      if (typeof extraction?.metadata?.paragraphs === 'number' && extraction.metadata.paragraphs > 0) {
         metadataSummary.push(
           isJapanese
-            ? `段落数: ${extraction.metadata.paragraphCount}`
-            : `Paragraphs: ${extraction.metadata.paragraphCount}`
+            ? `段落数: ${extraction.metadata.paragraphs}`
+            : `Paragraphs: ${extraction.metadata.paragraphs}`
         )
       }
       if (typeof extraction?.metadata?.slideCount === 'number' && extraction.metadata.slideCount > 0) {

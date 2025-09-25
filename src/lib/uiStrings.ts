@@ -22,6 +22,7 @@ type UIKey =
   | 'defaultWelcomeMessage'
   | 'defaultHelperText'
   | 'disclaimer'
+  | 'searchChats'
 
 const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
   auto: {
@@ -46,9 +47,12 @@ const STRINGS: Record<LanguageCode, Record<UIKey, string>> = {
     useDefaultGPT: 'Use default GPT',
     defaultWelcomeMessage: 'How can I help you today?',
     defaultHelperText: 'Select a custom assistant or start a new conversation.',
-    disclaimer: 'Clavi Local Mining can make mistakes. Check important info.'
+    disclaimer: 'Clavi Local Mining can make mistakes. Check important info.',
+    searchChats: 'Search chats...'
   },
   en: {
+    useIndexedContextLabel: 'Use indexed documents',
+    useIndexedContextHint: 'Toggle whether to use locally indexed documents in responses.',
     appName: 'Clavi Local Mining',
     tagline: 'Default assistant',
     newChat: 'New Chat',
